@@ -25,5 +25,5 @@ def webhook():
     return '', 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # ✅ Use environment PORT
-    app.run(host='0.0.0.0', port=port)        # ✅ Bind to 0.0.0.0
+    port = int(os.environ.get('PORT', 5000))  # ✅ Use environment port
+    app.run(host='0.0.0.0', port=port)        # ✅ Bind to all interfaces
