@@ -1,5 +1,6 @@
 from flask import Flask, request
 import requests
+import os
 
 app = Flask(__name__)
 
@@ -24,4 +25,5 @@ def webhook():
     return '', 200
 
 if __name__ == '__main__':
-    app.run()
+    port = int(os.environ.get('PORT', 5000))  # ✅ Use environment PORT
+    app.run(host='0.0.0.0', port=port)        # ✅ Bind to 0.0.0.0
