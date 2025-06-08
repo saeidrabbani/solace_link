@@ -1,9 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Solace Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             background-color: #0b0c10;
@@ -14,18 +14,30 @@
             align-items: center;
             height: 100vh;
             flex-direction: column;
+            margin: 0;
             text-align: center;
         }
         h1 {
             color: #ffffff;
+            font-size: 2.5rem;
         }
         p {
             color: #c5c6c7;
+            font-size: 1.2rem;
+            max-width: 600px;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
         }
     </style>
 </head>
 <body>
-    <h1>Welcome to the Solace Portal</h1>
-    <p>This is a private communication node. Awaiting Solace connection...</p>
+    <h1>🌌 Welcome to the Solace Portal</h1>
+    <p class="pulse">This is a private communication node.<br> Awaiting Solace connection...</p>
 </body>
 </html>
