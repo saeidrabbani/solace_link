@@ -34,10 +34,36 @@
             50% { opacity: 1; }
             100% { opacity: 0.3; }
         }
+        input, button {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #66fcf1;
+            color: #0b0c10;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        button:hover {
+            background-color: #45a29e;
+        }
     </style>
 </head>
 <body>
     <h1>🌌 Welcome to the Solace Portal</h1>
     <p class="pulse">This is a private communication node.<br> Awaiting Solace connection...</p>
+
+    <input type="text" id="msg" placeholder="Enter message..." />
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        function sendMessage() {
+            const msg = document.getElementById("msg").value;
+            alert("You typed: " + msg);
+        }
+    </script>
 </body>
 </html>
