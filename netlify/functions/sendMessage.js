@@ -1,5 +1,5 @@
 const token = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA";
-const chat_id = "253893212";
+const chat_id = "253893212"; // Chat ID Saeid
 
 exports.handler = async (event) => {
     const message = event.queryStringParameters.message || "No message given";
