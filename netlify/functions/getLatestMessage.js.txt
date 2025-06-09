@@ -2,7 +2,7 @@ const fetch = require("node-fetch");
 
 exports.handler = async function(event, context) {
   try {
-    const response = await fetch("https://<YOUR_FLASK_BACKEND_URL>/latest-message");
+    const response = await fetch("https://solacebot.onrender.com/latest-message");
     const data = await response.json();
 
     return {
