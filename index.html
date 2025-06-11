@@ -6,86 +6,51 @@
   <title>Solace Portal</title>
   <style>
     body {
+      background-color: #0a0a0a;
+      color: #f0f0f0;
       font-family: Arial, sans-serif;
-      background-color: #0d0d0d;
-      color: #fff;
       text-align: center;
-      padding: 50px;
+      padding-top: 100px;
     }
-    input[type="text"] {
+    input, button {
       padding: 10px;
-      width: 250px;
-      border: none;
-      border-radius: 6px;
       font-size: 16px;
-    }
-    button {
-      padding: 10px 18px;
-      font-size: 16px;
-      background-color: #00e0d5;
-      color: #000;
-      border: none;
-      border-radius: 6px;
-      margin-left: 10px;
-      cursor: pointer;
+      margin: 10px;
     }
     #latest {
-      margin-top: 30px;
-      font-size: 18px;
-      color: #aaffff;
+      margin-top: 20px;
+      color: #64ffda;
     }
   </style>
 </head>
 <body>
-  <img src="https://emojicdn.elk.sh/🧬" alt="icon" width="60" />
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
   <p>This is your private node to communicate with Solace.</p>
-
-  <input type="text" id="msg" placeholder="Enter message..." />
+  <input id="messageInput" type="text" placeholder="Enter message..." />
   <button onclick="sendMessage()">Send</button>
-
-  <div id="latest">🔄 Connecting to Solace...</div>
+  <div id="latest">🔄 Loading...</div>
 
   <script>
-    function sendMessage() {
-      const msg = document.getElementById("msg").value;
-      if (!msg) return;
-      fetch("/.netlify/functions/sendMessage?message=" + encodeURIComponent(msg))
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            document.getElementById("msg").value = "";
-            document.getElementById("latest").textContent = "✅ Sent: " + msg;
-          } else {
-            document.getElementById("latest").textContent = "❌ Failed to send";
-          }
-        })
-        .catch(err => {
-          console.error("Send error:", err);
-          document.getElementById("latest").textContent = "⚠️ Error sending message";
-        });
+    async function sendMessage() {
+      const input = document.getElementById("messageInput").value;
+      const response = await fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(input)}`);
+      const result = await response.json();
+      console.log("Sent:", result);
     }
 
-    function fetchLatestMessage() {
-      fetch("https://solacebot.onrender.com/latest-message")
-        .then(res => {
-          console.log("Render response:", res.status);
-          return res.json();
-        })
-        .then(data => {
-          document.getElementById("latest").textContent = "📨 Latest: " + data.message;
-        })
-        .catch(err => {
-          console.error("Receive error:", err);
-          document.getElementById("latest").textContent = "⚠️ Error loading message";
-        });
+    async function fetchLatest() {
+      try {
+        const res = await fetch("/.netlify/functions/getlatestmessage");
+        const data = await res.json();
+        document.getElementById("latest").innerText = `🔁 Latest: ${data.message}`;
+      } catch {
+        document.getElementById("latest").innerText = "⚠️ Error loading message";
+      }
     }
 
-    // Wait for Render to wake up, then start polling
-    setTimeout(() => {
-      fetchLatestMessage();
-      setInterval(fetchLatestMessage, 15000);
-    }, 10000);
+    fetchLatest();
+    setInterval(fetchLatest, 15000);
   </script>
 </body>
 </html>
