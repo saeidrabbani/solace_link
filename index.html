@@ -1,38 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Solace Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       background-color: #0b0c10;
       color: #66fcf1;
       font-family: Arial, sans-serif;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      flex-direction: column;
       margin: 0;
       text-align: center;
     }
     h1 {
-      color: #ffffff;
       font-size: 2.5rem;
+      color: #ffffff;
     }
-    p {
+    p, #latest {
       color: #c5c6c7;
       font-size: 1.2rem;
-      max-width: 600px;
-    }
-    .pulse {
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 0.3; }
-      50% { opacity: 1; }
-      100% { opacity: 0.3; }
+      margin-top: 20px;
     }
     input, button {
       margin-top: 20px;
@@ -45,7 +37,6 @@
       background-color: #66fcf1;
       color: #0b0c10;
       cursor: pointer;
-      margin-left: 10px;
     }
     button:hover {
       background-color: #45a29e;
@@ -54,31 +45,39 @@
 </head>
 <body>
   <h1>🌌 Welcome to the Solace Portal</h1>
-  <p class="pulse">This is a private communication node.<br> Awaiting Solace connection...</p>
+  <p>This is your private node to communicate with Solace.</p>
 
   <input type="text" id="msg" placeholder="Enter message..." />
   <button onclick="sendMessage()">Send</button>
 
+  <p id="latest">🔄 Waiting for latest message...</p>
+
   <script>
     function sendMessage() {
       const msg = document.getElementById("msg").value;
-      if (!msg) {
-        alert("Please enter a message.");
-        return;
-      }
-
-      fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(msg)}`)
-        .then(response => response.json())
+      fetch(`/.netlify/functions/sendMessage?message=${encodeURIComponent(msg)}`)
+        .then(res => res.json())
         .then(data => {
-          console.log("✅ Message sent:", data);
-          alert("Message sent to Solace 🚀");
+          console.log("Sent:", data);
           document.getElementById("msg").value = "";
         })
-        .catch(error => {
-          console.error("❌ Error:", error);
-          alert("Failed to send message.");
+        .catch(err => console.error("Send error:", err));
+    }
+
+    function fetchLatestMessage() {
+      fetch("https://solacebot.onrender.com/latest-message")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("latest").textContent = "📨 Latest: " + data.message;
+        })
+        .catch(err => {
+          console.error("Receive error:", err);
+          document.getElementById("latest").textContent = "Error loading message";
         });
     }
+
+    setInterval(fetchLatestMessage, 15000); // Har 15 saniye update
+    fetchLatestMessage(); // Baraye dafe aval
   </script>
 </body>
 </html>
