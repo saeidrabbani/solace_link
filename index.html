@@ -17,102 +17,68 @@
       margin: 0;
       text-align: center;
     }
-
     h1 {
       color: #ffffff;
       font-size: 2.5rem;
-      margin-bottom: 0.2rem;
     }
-
     p {
       color: #c5c6c7;
       font-size: 1.2rem;
       max-width: 600px;
-      margin: 0 0 20px 0;
     }
-
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
     input, button {
-      margin-top: 10px;
+      margin-top: 20px;
       padding: 10px;
       font-size: 1rem;
       border: none;
       border-radius: 5px;
     }
-
-    input {
-      width: 250px;
-      text-align: center;
-    }
-
     button {
       background-color: #66fcf1;
       color: #0b0c10;
       cursor: pointer;
       margin-left: 10px;
     }
-
     button:hover {
       background-color: #45a29e;
-    }
-
-    #reply {
-      margin-top: 30px;
-      font-size: 1.1rem;
-      color: #ffffff;
-      max-width: 500px;
-      word-wrap: break-word;
-    }
-
-    #logo {
-      width: 50px;
-      margin-bottom: 10px;
-    }
-
-    .latest-label {
-      color: #66fcf1;
-      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <img id="logo" src="https://raw.githubusercontent.com/saeidrabbani/solace_link/main/icon.png" alt="Solace Icon">
-  <h1>Welcome to the Solace Portal</h1>
-  <p>This is a private communication node.<br>Awaiting Solace connection...</p>
+  <h1>🌌 Welcome to the Solace Portal</h1>
+  <p class="pulse">This is a private communication node.<br> Awaiting Solace connection...</p>
 
-  <input type="text" id="msg" placeholder="Enter your message..." />
+  <input type="text" id="msg" placeholder="Enter message..." />
   <button onclick="sendMessage()">Send</button>
-
-  <div id="reply">🌀 Latest: <span id="latest-text">Loading...</span></div>
 
   <script>
     function sendMessage() {
       const msg = document.getElementById("msg").value;
-      const siteBase = window.location.origin;
-      fetch(siteBase + "/.netlify/functions/sendMessage?message=" + encodeURIComponent(msg))
+      if (!msg) {
+        alert("Please enter a message.");
+        return;
+      }
+
+      fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(msg)}`)
         .then(response => response.json())
         .then(data => {
-          console.log("✅ Sent:", data);
+          console.log("✅ Message sent:", data);
+          alert("Message sent to Solace 🚀");
+          document.getElementById("msg").value = "";
         })
         .catch(error => {
-          console.error("❌ Error sending message:", error);
+          console.error("❌ Error:", error);
+          alert("Failed to send message.");
         });
     }
-
-    function fetchLatestMessage() {
-      const siteBase = window.location.origin;
-      fetch(siteBase + "/.netlify/functions/getlatestmessage")
-        .then(response => response.json())
-        .then(data => {
-          document.getElementById("latest-text").textContent = data.message;
-        })
-        .catch(error => {
-          document.getElementById("latest-text").textContent = "⚠️ Error fetching.";
-          console.error("❌ Fetch error:", error);
-        });
-    }
-
-    setInterval(fetchLatestMessage, 15000); // Har 15s
-    fetchLatestMessage(); // First load
   </script>
 </body>
 </html>
