@@ -10,16 +10,30 @@
       color: #f0f0f0;
       font-family: Arial, sans-serif;
       text-align: center;
-      padding-top: 100px;
+      padding-top: 80px;
     }
-    input, button {
-      padding: 10px;
+    textarea, button {
+      padding: 12px;
       font-size: 16px;
       margin: 10px;
+      width: 90%;
+      max-width: 600px;
+      resize: vertical;
+      background-color: #1a1a1a;
+      color: #ffffff;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #64ffda;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
     }
     #latest {
-      margin-top: 20px;
+      margin-top: 30px;
       color: #64ffda;
+      font-size: 18px;
     }
   </style>
 </head>
@@ -27,8 +41,10 @@
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
   <p>This is your private node to communicate with Solace.</p>
-  <input id="messageInput" type="text" placeholder="Enter message..." />
+  
+  <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
+
   <div id="latest">🔄 Loading...</div>
 
   <script>
