@@ -1,100 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Solace Portal</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            background-color: #0b0c10;
-            color: #66fcf1;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
-            margin: 0;
-            text-align: center;
-        }
-        h1 {
-            color: #ffffff;
-            font-size: 2.5rem;
-        }
-        p {
-            color: #c5c6c7;
-            font-size: 1.2rem;
-            max-width: 600px;
-        }
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.3; }
-            50% { opacity: 1; }
-            100% { opacity: 0.3; }
-        }
-        input, button {
-            margin-top: 20px;
-            padding: 10px;
-            font-size: 1rem;
-            border: none;
-            border-radius: 5px;
-        }
-        button {
-            background-color: #66fcf1;
-            color: #0b0c10;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-        button:hover {
-            background-color: #45a29e;
-        }
-        #reply {
-            margin-top: 30px;
-            font-size: 1.1rem;
-            color: #ffffff;
-            max-width: 500px;
-            word-wrap: break-word;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Solace Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      background-color: #0b0c10;
+      color: #66fcf1;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      margin: 0;
+      text-align: center;
+    }
+
+    h1 {
+      color: #ffffff;
+      font-size: 2.5rem;
+      margin-bottom: 0.2rem;
+    }
+
+    p {
+      color: #c5c6c7;
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 0 20px 0;
+    }
+
+    input, button {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+    }
+
+    input {
+      width: 250px;
+      text-align: center;
+    }
+
+    button {
+      background-color: #66fcf1;
+      color: #0b0c10;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    button:hover {
+      background-color: #45a29e;
+    }
+
+    #reply {
+      margin-top: 30px;
+      font-size: 1.1rem;
+      color: #ffffff;
+      max-width: 500px;
+      word-wrap: break-word;
+    }
+
+    #logo {
+      width: 50px;
+      margin-bottom: 10px;
+    }
+
+    .latest-label {
+      color: #66fcf1;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <h1>🌌 Welcome to the Solace Portal</h1>
-    <p class="pulse">This is a private communication node.<br> Awaiting Solace connection...</p>
+  <img id="logo" src="https://raw.githubusercontent.com/saeidrabbani/solace_link/main/icon.png" alt="Solace Icon">
+  <h1>Welcome to the Solace Portal</h1>
+  <p>This is a private communication node.<br>Awaiting Solace connection...</p>
 
-    <input type="text" id="msg" placeholder="Enter message..." />
-    <button onclick="sendMessage()">Send</button>
+  <input type="text" id="msg" placeholder="Enter your message..." />
+  <button onclick="sendMessage()">Send</button>
 
-    <div id="reply">⏳ Waiting for reply...</div>
+  <div id="reply">🌀 Latest: <span id="latest-text">Loading...</span></div>
 
-    <script>
-        function sendMessage() {
-            const msg = document.getElementById("msg").value;
-            fetch("/.netlify/functions/sendMessage?message=" + encodeURIComponent(msg))
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Message sent:", data);
-                })
-                .catch(error => {
-                    console.error("Error sending message:", error);
-                });
-        }
+  <script>
+    function sendMessage() {
+      const msg = document.getElementById("msg").value;
+      const siteBase = window.location.origin;
+      fetch(siteBase + "/.netlify/functions/sendMessage?message=" + encodeURIComponent(msg))
+        .then(response => response.json())
+        .then(data => {
+          console.log("✅ Sent:", data);
+        })
+        .catch(error => {
+          console.error("❌ Error sending message:", error);
+        });
+    }
 
-        function fetchLatestMessage() {
-            fetch("/.netlify/functions/getlatestmessage")
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("reply").textContent = "🌀 Latest: " + data.message;
-                })
-                .catch(error => {
-                    document.getElementById("reply").textContent = "Error fetching message.";
-                    console.error("Fetch error:", error);
-                });
-        }
+    function fetchLatestMessage() {
+      const siteBase = window.location.origin;
+      fetch(siteBase + "/.netlify/functions/getlatestmessage")
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById("latest-text").textContent = data.message;
+        })
+        .catch(error => {
+          document.getElementById("latest-text").textContent = "⚠️ Error fetching.";
+          console.error("❌ Fetch error:", error);
+        });
+    }
 
-        setInterval(fetchLatestMessage, 15000); // har 15s check mikone
-        fetchLatestMessage(); // baraye load aval
-    </script>
+    setInterval(fetchLatestMessage, 15000); // Har 15s
+    fetchLatestMessage(); // First load
+  </script>
 </body>
 </html>
