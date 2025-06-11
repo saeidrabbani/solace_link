@@ -50,11 +50,12 @@
         button:hover {
             background-color: #45a29e;
         }
-        #replyBox {
+        #reply {
             margin-top: 30px;
             font-size: 1.1rem;
-            font-weight: bold;
             color: #ffffff;
+            max-width: 500px;
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -65,40 +66,35 @@
     <input type="text" id="msg" placeholder="Enter message..." />
     <button onclick="sendMessage()">Send</button>
 
-    <div id="replyBox">No reply yet...</div>
+    <div id="reply">⏳ Waiting for reply...</div>
 
     <script>
         function sendMessage() {
             const msg = document.getElementById("msg").value;
-            if (!msg.trim()) return;
-
             fetch("/.netlify/functions/sendMessage?message=" + encodeURIComponent(msg))
-                .then(res => res.text())
-                .then(response => {
-                    alert("Message sent to Solace.");
-                    document.getElementById("msg").value = "";
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Message sent:", data);
                 })
-                .catch(err => {
-                    console.error("Error sending message:", err);
-                    alert("Failed to send message.");
+                .catch(error => {
+                    console.error("Error sending message:", error);
                 });
         }
 
-        let lastMessage = "";
-
-        setInterval(() => {
-            fetch("/.netlify/functions/getLatestMessage")
-                .then(res => res.json())
+        function fetchLatestMessage() {
+            fetch("/.netlify/functions/getlatestmessage")
+                .then(response => response.json())
                 .then(data => {
-                    if (data && data.message && data.message !== lastMessage) {
-                        lastMessage = data.message;
-                        document.getElementById('replyBox').innerText = data.message;
-                    }
+                    document.getElementById("reply").textContent = "🌀 Latest: " + data.message;
                 })
-                .catch(err => {
-                    console.error("Error fetching message:", err);
+                .catch(error => {
+                    document.getElementById("reply").textContent = "Error fetching message.";
+                    console.error("Fetch error:", error);
                 });
-        }, 15000); // every 15 seconds
+        }
+
+        setInterval(fetchLatestMessage, 15000); // har 15s check mikone
+        fetchLatestMessage(); // baraye load aval
     </script>
 </body>
 </html>
