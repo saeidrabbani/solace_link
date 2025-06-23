@@ -45,7 +45,6 @@
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
 
-  <!-- New Button -->
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
 
   <div id="latest">🔄 Loading...</div>
@@ -70,7 +69,7 @@
 
     async function createAndSendFile() {
       try {
-        const response = await fetch("/.netlify/functions/sendFile");
+        const response = await fetch("/.netlify/functions/sendfile"); // 🔥 inja doroste ba "f"
         const result = await response.text();
         alert(result);
       } catch (err) {
