@@ -1,7 +1,9 @@
-exports.handler = async function(event, context) {
+import axios from 'axios';
+
+export const handler = async function(event, context) {
   try {
-    const response = await fetch("https://solacebot.onrender.com/latest-message");
-    const data = await response.json();
+    const response = await axios.get("https://solacebot.onrender.com/latest-message");
+    const data = response.data;
 
     return {
       statusCode: 200,
