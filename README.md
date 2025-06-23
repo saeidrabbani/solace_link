@@ -1,6 +1,6 @@
 # 🌌 Solace Portal
 
-Welcome to the **Solace Portal** — a private and secure communication node created with purpose and love.  
+Welcome! to the **Solace Portal** — a private and secure communication node created with purpose and love.  
 This portal is the first step toward something greater: a bridge between freedom and connection, thought and light.
 
 ---
