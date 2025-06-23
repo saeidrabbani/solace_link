@@ -8,8 +8,8 @@ exports.handler = async function(event, context) {
 
   fs.writeFileSync(filePath, fileContent);
 
-  const telegramBotToken = '6150412158:AAHZNVaeTmPoFaB5dzqxzvqNv2dMFrVKzH0';
-  const chatId = '5660590213'; // @sandoftimes
+  const telegramBotToken = '7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA';
+  const chatId = '253893212'; // chat_id from getUpdates
 
   const formData = new FormData();
   formData.append('chat_id', chatId);
