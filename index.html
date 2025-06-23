@@ -45,6 +45,9 @@
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
 
+  <!-- New Button -->
+  <button onclick="createAndSendFile()">📄 Send File to Me</button>
+
   <div id="latest">🔄 Loading...</div>
 
   <script>
@@ -62,6 +65,16 @@
         document.getElementById("latest").innerText = `🔁 Latest: ${data.message}`;
       } catch {
         document.getElementById("latest").innerText = "⚠️ Error loading message";
+      }
+    }
+
+    async function createAndSendFile() {
+      try {
+        const response = await fetch("/.netlify/functions/sendFile");
+        const result = await response.text();
+        alert(result);
+      } catch (err) {
+        alert("❌ Failed to send file: " + err.message);
       }
     }
 
