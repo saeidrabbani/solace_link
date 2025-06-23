@@ -1,16 +1,15 @@
 const fs = require('fs');
-const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
 
 exports.handler = async function(event, context) {
-  const fileContent = "This is a message from Solace.\nYour code or data will be placed here.";
+  const fileContent = "This is a message from Solace.\nCustom code will be added here.";
   const filePath = '/tmp/solace_message.txt';
 
   fs.writeFileSync(filePath, fileContent);
 
-  const telegramBotToken = 'YOUR_BOT_TOKEN';
-  const chatId = 'YOUR_CHAT_ID';
+  const telegramBotToken = '6150412158:AAHZNVaeTmPoFaB5dzqxzvqNv2dMFrVKzH0';
+  const chatId = '5660590213'; // @sandoftimes
 
   const formData = new FormData();
   formData.append('chat_id', chatId);
