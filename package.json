@@ -1,11 +1,8 @@
 {
   "name": "solace_link",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
-    "node-fetch": "^2.6.7"
-  },
-  "netlify": {
-    "functions": "netlify/functions"
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0"
   }
 }
