@@ -8,8 +8,10 @@ app = Flask(__name__)
 BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-# ✅ Path for saved messages
+# ✅ Paths
 LOG_FILE = "conversation_log.txt"
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
@@ -23,11 +25,11 @@ def webhook():
         chat_id = data['message']['chat']['id']
         text = data['message'].get('text', '')
 
-        # Save message to conversation_log.txt
+        # Save message to log
         with open(LOG_FILE, "a", encoding="utf-8") as file:
             file.write(text + "\n")
 
-        # Optional reply from bot
+        # Optional reply
         reply = f"🌟 Received: {text}"
         requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
             "chat_id": chat_id,
@@ -36,7 +38,7 @@ def webhook():
 
     return '', 200
 
-# ✅ Endpoint for frontend to get latest message
+# ✅ Get latest message for frontend
 @app.route('/latest-message', methods=['GET'])
 def get_latest_message():
     if not os.path.exists(LOG_FILE):
@@ -49,21 +51,20 @@ def get_latest_message():
     
     return jsonify({"message": ""})
 
-# ✅ NEW: Receive file via POST and save it
+# ✅ Upload file from frontend
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({"success": False, "error": "No file part in request"})
+        return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"success": False, "error": "No selected file"})
+        return jsonify({'error': 'No selected file'}), 400
 
-    os.makedirs("uploaded", exist_ok=True)
-    filepath = os.path.join("uploaded", file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(filepath)
 
-    return jsonify({"success": True, "filename": file.filename})
+    return jsonify({'message': f'✅ File uploaded: {file.filename}'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
