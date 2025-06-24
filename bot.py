@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests
 import os
 
 app = Flask(__name__)
+CORS(app)  # ✅ Allow cross-origin requests (Netlify ➜ Render)
 
 BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
@@ -44,7 +46,6 @@ def get_latest_message():
     
     return jsonify({"message": ""})
 
-# ✅ NEW — handle file upload from frontend
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
