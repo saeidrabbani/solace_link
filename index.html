@@ -92,15 +92,28 @@
       const formData = new FormData();
       formData.append("file", file);
 
-      try {
-        const res = await fetch("https://solacebot.onrender.com/upload-file", {
-          method: "POST",
-          body: formData
-        });
-        const result = await res.json();
-        alert(result.message || "✅ File uploaded.");
-      } catch (err) {
-        alert("❌ Upload failed: " + err.message);
+      let attempts = 0;
+      const maxAttempts = 3;
+      const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+      while (attempts < maxAttempts) {
+        try {
+          const res = await fetch("https://solacebot.onrender.com/upload-file", {
+            method: "POST",
+            body: formData
+          });
+          const result = await res.json();
+          alert(result.message || "✅ File uploaded.");
+          return;
+        } catch (err) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            document.getElementById("latest").innerText = `⏳ Retry ${attempts}... waiting`;
+            await delay(5000);
+          } else {
+            alert("❌ Upload failed after 3 tries: " + err.message);
+          }
+        }
       }
     }
 
