@@ -12,7 +12,7 @@
       text-align: center;
       padding-top: 80px;
     }
-    textarea, button {
+    textarea, button, input[type="file"] {
       padding: 12px;
       font-size: 16px;
       margin: 10px;
@@ -47,6 +47,10 @@
 
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
 
+  <br>
+  <input type="file" id="fileInput" />
+  <button onclick="uploadFile()">📤 Upload File</button>
+
   <div id="latest">🔄 Loading...</div>
 
   <script>
@@ -69,11 +73,34 @@
 
     async function createAndSendFile() {
       try {
-        const response = await fetch("/.netlify/functions/sendfile"); // 🔥 inja doroste ba "f"
+        const response = await fetch("/.netlify/functions/sendfile"); // 🔥 lowercase 'f'
         const result = await response.text();
         alert(result);
       } catch (err) {
         alert("❌ Failed to send file: " + err.message);
+      }
+    }
+
+    async function uploadFile() {
+      const input = document.getElementById("fileInput");
+      const file = input.files[0];
+      if (!file) {
+        alert("❗ Please select a file to upload.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("https://solacebot.onrender.com/upload-file", {
+          method: "POST",
+          body: formData
+        });
+        const result = await res.json();
+        alert(result.message || "✅ File uploaded.");
+      } catch (err) {
+        alert("❌ Upload failed: " + err.message);
       }
     }
 
