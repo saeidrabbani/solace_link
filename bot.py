@@ -49,6 +49,22 @@ def get_latest_message():
     
     return jsonify({"message": ""})
 
+# ✅ NEW: Receive file via POST and save it
+@app.route('/upload-file', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"success": False, "error": "No file part in request"})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected file"})
+
+    os.makedirs("uploaded", exist_ok=True)
+    filepath = os.path.join("uploaded", file.filename)
+    file.save(filepath)
+
+    return jsonify({"success": True, "filename": file.filename})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
