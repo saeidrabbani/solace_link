@@ -6,10 +6,13 @@
   <title>Solace Portal</title>
   <style>
     body {
-      background-color: white;
-      color: black;
       font-family: Arial, sans-serif;
+      background: white;
+      color: black;
       padding: 20px;
+    }
+    h1 {
+      text-align: center;
     }
     textarea {
       width: 100%;
@@ -17,90 +20,124 @@
       resize: vertical;
     }
     button {
-      margin: 5px;
+      margin-top: 10px;
       padding: 10px;
+      cursor: pointer;
     }
-    .file-item {
+    #fileList {
+      margin-top: 20px;
+    }
+    .file-entry {
       margin: 5px 0;
     }
   </style>
 </head>
 <body>
-  <h2>Solace Portal</h2>
+  <h1>Solace Portal</h1>
 
-  <textarea id="messageInput" placeholder="Type your message..."></textarea><br>
+  <h3>🔹 Last Message from Telegram</h3>
+  <div id="lastMessage">Loading...</div>
+
+  <h3>🔹 Send Message to Telegram</h3>
+  <textarea id="messageInput" placeholder="Type your message here..."></textarea><br />
   <button onclick="sendMessage()">Send Message</button>
-  <button onclick="document.getElementById('fileInput').click()">Send File to Me</button>
-  <input type="file" id="fileInput" style="display:none" onchange="uploadFile()" />
 
-  <hr>
-  <h3>Uploaded Files</h3>
-  <div id="fileList">Loading...</div>
-  <button onclick="deleteSelected()">Delete Selected</button>
+  <h3>🔹 Upload File to Portal</h3>
+  <input type="file" id="fileInput" />
+  <button onclick="uploadFile()">Upload File</button>
+
+  <h3>🔹 Send File to Telegram</h3>
+  <input type="file" id="sendToMeInput" />
+  <button onclick="sendFileToMe()">Send File to Me</button>
+
+  <h3>🔹 Uploaded Files</h3>
+  <div id="fileList">Loading files...</div>
 
   <script>
-    async function sendMessage() {
-      const text = document.getElementById("messageInput").value;
-      if (!text.trim()) return alert("Message is empty!");
-      await fetch("https://solacebot.onrender.com/send-text", {
-        method: "POST",
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ text })
-      });
-      alert("✅ Message sent to Telegram!");
-      document.getElementById("messageInput").value = "";
-    }
-
-    async function uploadFile() {
-      const fileInput = document.getElementById("fileInput");
-      const file = fileInput.files[0];
-      if (!file) return;
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("https://solacebot.onrender.com/upload-file", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await res.json();
-      alert(data.message);
-      loadFiles();
-    }
-
-    async function loadFiles() {
-      const res = await fetch("https://solacebot.onrender.com/list-files");
-      const data = await res.json();
-      const fileList = document.getElementById("fileList");
-      fileList.innerHTML = "";
-
-      data.files.forEach(file => {
-        const div = document.createElement("div");
-        div.className = "file-item";
-        div.innerHTML = `
-          <input type="checkbox" class="delete-checkbox" value="${file.name}" />
-          <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">${file.name}</a>
-        `;
-        fileList.appendChild(div);
-      });
-    }
-
-    async function deleteSelected() {
-      const selected = [...document.querySelectorAll(".delete-checkbox:checked")].map(cb => cb.value);
-      if (selected.length === 0) return alert("Select files to delete.");
-      if (!confirm("Are you sure you want to delete selected files?")) return;
-
-      for (const filename of selected) {
-        await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
-          method: "DELETE"
+    function fetchLatestMessage() {
+      fetch('/latest-message')
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById('lastMessage').innerText = data.message || 'No messages yet.';
+        })
+        .catch(() => {
+          document.getElementById('lastMessage').innerText = 'Failed to load message.';
         });
-      }
-      loadFiles();
     }
 
-    loadFiles();
-    setInterval(loadFiles, 15000); // optional auto-refresh
+    function sendMessage() {
+      const msg = document.getElementById('messageInput').value;
+      fetch('/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+    }
+
+    function uploadFile() {
+      const fileInput = document.getElementById('fileInput');
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      }).then(() => {
+        fileInput.value = '';
+        listFiles();
+      });
+    }
+
+    function sendFileToMe() {
+      const fileInput = document.getElementById('sendToMeInput');
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      fetch('/send-file-to-me', {
+        method: 'POST',
+        body: formData
+      }).then(() => {
+        fileInput.value = '';
+      });
+    }
+
+    function listFiles() {
+      fetch('/list-files')
+        .then((res) => res.json())
+        .then((data) => {
+          const fileList = document.getElementById('fileList');
+          fileList.innerHTML = '';
+
+          data.files.forEach((file) => {
+            const div = document.createElement('div');
+            div.className = 'file-entry';
+            div.innerHTML = `
+              <input type="checkbox" class="file-check" value="${file.name}" />
+              <a href="/uploads/${file.name}" target="_blank">${file.name}</a>
+              <span style="margin-left:10px;">(${file.size} MB)</span>
+            `;
+            fileList.appendChild(div);
+          });
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.textContent = 'Delete Selected Files';
+          deleteBtn.onclick = deleteSelected;
+          fileList.appendChild(deleteBtn);
+        });
+    }
+
+    function deleteSelected() {
+      const checked = document.querySelectorAll('.file-check:checked');
+      checked.forEach((box) => {
+        fetch('/delete-file/' + box.value, { method: 'DELETE' })
+          .then(() => listFiles());
+      });
+    }
+
+    // Auto-refresh latest message and file list
+    setInterval(fetchLatestMessage, 10000);
+    fetchLatestMessage();
+    listFiles();
   </script>
 </body>
 </html>
