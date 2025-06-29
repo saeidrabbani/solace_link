@@ -8,6 +8,7 @@ CORS(app)
 
 BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+TELEGRAM_CHAT_ID = "7816762363"
 LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -107,6 +108,24 @@ def delete_file(filename):
         os.remove(path)
         return jsonify({"message": f"🗑️ Deleted: {filename}"}), 200
     return jsonify({"message": "❌ File not found."}), 404
+
+@app.route("/send-uploaded-file/<filename>")
+def send_uploaded_file(filename):
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.isfile(file_path):
+            return "File not found", 404
+
+        with open(file_path, "rb") as f:
+            requests.post(
+                f"{TELEGRAM_API_URL}/sendDocument",
+                data={"chat_id": TELEGRAM_CHAT_ID},
+                files={"document": (filename, f)}
+            )
+
+        return f"✅ File '{filename}' sent to Telegram."
+    except Exception as e:
+        return f"❌ Failed to send file: {str(e)}", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
