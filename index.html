@@ -1,168 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Solace Portal</title>
   <style>
     body {
-      background-color: #0a0a0a;
+      background-color: #121212;
       color: #f0f0f0;
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 80px;
+      padding: 20px;
     }
-    textarea, button, input[type="file"] {
-      padding: 12px;
-      font-size: 16px;
-      margin: 10px;
-      width: 90%;
-      max-width: 600px;
+    textarea {
+      width: 100%;
+      height: 100px;
       resize: vertical;
-      background-color: #1a1a1a;
-      color: #ffffff;
-      border: 1px solid #333;
-      border-radius: 6px;
     }
-    button {
-      background-color: #64ffda;
-      color: #000;
-      font-weight: bold;
+    button, input[type="file"] {
+      margin-top: 10px;
+      padding: 10px;
+      border: none;
       cursor: pointer;
     }
-    #latest {
-      margin-top: 30px;
-      color: #64ffda;
-      font-size: 18px;
-    }
     .file-entry {
-      background-color: #1e1e1e;
-      margin: 10px auto;
+      background-color: #2a2a2a;
       padding: 10px;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 600px;
-      text-align: left;
+      margin-top: 5px;
+      border-radius: 5px;
     }
-    .file-entry button {
-      float: right;
-      background-color: #ff5252;
+    .delete-btn {
+      background-color: #ff4c4c;
       color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .view-link {
+      color: #66ccff;
+      text-decoration: underline;
       margin-left: 10px;
     }
   </style>
 </head>
 <body>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
-  <h1>Welcome to the Solace Portal</h1>
-  <p>This is your private node to communicate with Solace.</p>
-  
-  <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
-  <button onclick="sendMessage()">Send</button>
-  <button onclick="createAndSendFile()">📄 Send File to Me</button>
-  <br>
-  <input type="file" id="fileInput" />
-  <button onclick="uploadFile()">📤 Upload File</button>
 
-  <div id="latest">🔄 Loading...</div>
-  <hr style="margin: 40px auto; width: 60%; border: 1px solid #444;">
-  <h2>📁 Uploaded Files</h2>
-  <div id="fileList">🔄 Loading files...</div>
+  <h1>📁 Uploaded Files</h1>
+  <div id="file-list"></div>
+
+  <hr>
+  <h3>💬 Message to Solace</h3>
+  <textarea id="messageBox" placeholder="Enter your message..."></textarea><br>
+  <button onclick="sendMessage()">Send</button>
+
+  <h3>📤 Upload File</h3>
+  <input type="file" id="fileInput">
+  <button onclick="uploadFile()">Upload File</button>
 
   <script>
-    async function sendMessage() {
-      const input = document.getElementById("messageInput").value;
-      const response = await fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(input)}`);
-      const result = await response.json();
-      console.log("Sent:", result);
-    }
-
-    async function fetchLatest() {
-      try {
-        const res = await fetch("/.netlify/functions/getlatestmessage");
-        const data = await res.json();
-        document.getElementById("latest").innerText = `🔁 Latest: ${data.message}`;
-      } catch {
-        document.getElementById("latest").innerText = "⚠️ Error loading message";
-      }
-    }
-
-    async function createAndSendFile() {
-      try {
-        const response = await fetch("/.netlify/functions/sendfile");
-        const result = await response.text();
-        alert(result);
-      } catch (err) {
-        alert("❌ Failed to send file: " + err.message);
-      }
-    }
+    const SERVER_URL = 'https://solacebot.onrender.com';
 
     async function uploadFile() {
-      const input = document.getElementById("fileInput");
-      const file = input.files[0];
-      if (!file) {
-        alert("❗ Please select a file to upload.");
-        return;
-      }
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files.length) return alert("Please select a file.");
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", fileInput.files[0]);
 
-      try {
-        const res = await fetch("https://solacebot.onrender.com/upload-file", {
-          method: "POST",
-          body: formData
-        });
-        const result = await res.json();
-        alert(result.message || "✅ File uploaded.");
-        loadFileList();
-      } catch (err) {
-        alert("❌ Upload failed: " + err.message);
-      }
+      const res = await fetch(`${SERVER_URL}/upload-file`, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await res.json();
+      alert(result.message);
+      loadFiles();
     }
 
-    async function loadFileList() {
-      const res = await fetch("https://solacebot.onrender.com/list-files");
+    async function loadFiles() {
+      const res = await fetch(`${SERVER_URL}/list-files`);
       const data = await res.json();
-      const container = document.getElementById("fileList");
-      container.innerHTML = "";
+      const fileList = document.getElementById("file-list");
+      fileList.innerHTML = '';
 
       if (!data.files.length) {
-        container.innerText = "No files found.";
+        fileList.innerHTML = "<p>No files found.</p>";
         return;
       }
 
       data.files.forEach(file => {
-        const entry = document.createElement("div");
-        entry.className = "file-entry";
-        entry.innerHTML = `
+        const div = document.createElement("div");
+        div.className = "file-entry";
+        div.innerHTML = `
           📄 <strong>${file.name}</strong> – ${file.size} KB
-          <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
-          <button onclick="deleteFile('${file.name}')">🗑️ Delete</button>
+          <a class="view-link" href="${SERVER_URL}/uploads/${file.name}" target="_blank">View</a>
+          <button class="delete-btn" onclick="deleteFile('${file.name}')">Delete</button>
         `;
-        container.appendChild(entry);
+        fileList.appendChild(div);
       });
     }
 
     async function deleteFile(filename) {
-      const confirmDelete = confirm(`Are you sure you want to delete ${filename}?`);
-      if (!confirmDelete) return;
-
-      try {
-        const res = await fetch(`https://solacebot.onrender.com/delete-file?filename=${encodeURIComponent(filename)}`, {
-          method: "DELETE"
-        });
-        const result = await res.json();
-        alert(result.message || "✅ Deleted.");
-        loadFileList();
-      } catch (err) {
-        alert("❌ Delete failed: " + err.message);
-      }
+      const res = await fetch(`${SERVER_URL}/delete-file/${filename}`, {
+        method: 'DELETE'
+      });
+      const result = await res.json();
+      alert(result.message);
+      loadFiles();
     }
 
-    fetchLatest();
-    setInterval(fetchLatest, 15000);
-    loadFileList();
+    async function sendMessage() {
+      const msg = document.getElementById("messageBox").value;
+      if (!msg) return alert("Please type a message.");
+      await fetch(`${SERVER_URL}/webhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: { chat: { id: "test" }, text: msg } })
+      });
+      alert("✅ Message sent.");
+    }
+
+    loadFiles();
   </script>
+
 </body>
 </html>
