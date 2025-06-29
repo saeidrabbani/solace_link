@@ -1,13 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import os
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)  # ✅ Allow all origins (including Netlify)
+CORS(app)
 
-BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
+BOT_TOKEN = "YOUR_BOT_TOKEN"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
@@ -59,25 +58,31 @@ def upload_file():
 
     return jsonify({"message": f"✅ File uploaded: {filename}"}), 200
 
-# 🟢 New: List all uploaded files
 @app.route('/list-files', methods=['GET'])
 def list_files():
     files = []
-    for filename in os.listdir(UPLOAD_FOLDER):
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.isfile(filepath):
-            size_kb = round(os.path.getsize(filepath) / 1024, 2)
-            files.append({'name': filename, 'size': size_kb})
-    return jsonify({'files': files})
+    for fname in os.listdir(UPLOAD_FOLDER):
+        fpath = os.path.join(UPLOAD_FOLDER, fname)
+        if os.path.isfile(fpath):
+            size_kb = round(os.path.getsize(fpath) / 1024, 2)
+            files.append({"name": fname, "size": size_kb})
+    return jsonify({"files": files})
 
-# 🗑️ New: Delete a specific file
 @app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    filepath = os.path.join(UPLOAD_FOLDER, secure_filename(filename))
-    if os.path.exists(filepath):
-        os.remove(filepath)
-        return jsonify({'message': f'{filename} deleted.'})
-    return jsonify({'message': 'File not found.'}), 404
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return jsonify({"message": f"🗑️ Deleted: {filename}"})
+        else:
+            return jsonify({"message": "❌ File not found."}), 404
+    except Exception as e:
+        return jsonify({"message": f"❌ Error deleting: {str(e)}"}), 500
+
+@app.route('/uploads/<filename>', methods=['GET'])
+def serve_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
