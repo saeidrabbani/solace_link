@@ -1,57 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Solace Portal</title>
-  <style>
-    body {
-      background-color: #0a0a0a;
-      color: #f0f0f0;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 80px;
-    }
-    textarea, button, input[type="file"] {
-      padding: 12px;
-      font-size: 16px;
-      margin: 10px;
-      width: 90%;
-      max-width: 600px;
-      resize: vertical;
-      background-color: #1a1a1a;
-      color: #ffffff;
-      border: 1px solid #333;
-      border-radius: 6px;
-    }
-    button {
-      background-color: #64ffda;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #latest {
-      margin-top: 30px;
-      color: #64ffda;
-      font-size: 18px;
-    }
-  </style>
-</head>
 <body>
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
   <p>This is your private node to communicate with Solace.</p>
-  
+
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
 
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
-
   <br>
   <input type="file" id="fileInput" />
   <button onclick="uploadFile()">📤 Upload File</button>
 
+  <br><br>
+  <button onclick="loadFileList()">📁 View Uploaded Files</button>
+
   <div id="latest">🔄 Loading...</div>
+
+  <div id="fileListModal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); width:90%; max-width:600px; background:#1a1a1a; color:#fff; border:1px solid #444; padding:20px; border-radius:8px; z-index:999;">
+    <h3>📁 Uploaded Files</h3>
+    <div id="fileList">Loading...</div>
+    <br><button onclick="closeModal()">Close</button>
+  </div>
 
   <script>
     async function sendMessage() {
@@ -117,8 +86,53 @@
       }
     }
 
+    function closeModal() {
+      document.getElementById("fileListModal").style.display = "none";
+    }
+
+    async function loadFileList() {
+      const modal = document.getElementById("fileListModal");
+      modal.style.display = "block";
+      const container = document.getElementById("fileList");
+      container.innerHTML = "Loading...";
+
+      try {
+        const res = await fetch("https://solacebot.onrender.com/list-files");
+        const data = await res.json();
+
+        if (!data.files || data.files.length === 0) {
+          container.innerHTML = "<p>No files found.</p>";
+          return;
+        }
+
+        container.innerHTML = data.files.map(file => {
+          return `<div style="margin:10px 0; border-bottom:1px solid #444; padding:5px;">
+            📄 <b>${file.name}</b> — ${file.size} KB
+            <button style="float:right;" onclick="deleteFile('${file.name}')">🗑️ Delete</button>
+          </div>`;
+        }).join("");
+      } catch (err) {
+        container.innerHTML = "❌ Failed to load file list.";
+      }
+    }
+
+    async function deleteFile(filename) {
+      const confirmDelete = confirm(`Are you sure you want to delete "${filename}"?`);
+      if (!confirmDelete) return;
+
+      try {
+        const res = await fetch(`https://solacebot.onrender.com/delete-file/${encodeURIComponent(filename)}`, {
+          method: "DELETE"
+        });
+        const result = await res.json();
+        alert(result.message || "✅ File deleted.");
+        loadFileList();
+      } catch (err) {
+        alert("❌ Failed to delete: " + err.message);
+      }
+    }
+
     fetchLatest();
     setInterval(fetchLatest, 15000);
   </script>
 </body>
-</html>
