@@ -9,122 +9,134 @@
       background-color: white;
       color: black;
       font-family: Arial, sans-serif;
+      margin: 0;
       padding: 20px;
-    }
-    h1 {
       text-align: center;
     }
-    .file-container {
-      margin-top: 20px;
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
     }
-    .file-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+
+    textarea {
+      width: 80%;
+      height: 100px;
       padding: 10px;
-      border: 1px solid #aaa;
-      margin-bottom: 10px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      resize: vertical;
+    }
+
+    .button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
       border-radius: 6px;
     }
-    .file-actions {
-      display: flex;
-      gap: 10px;
+
+    .file-section {
+      margin-top: 30px;
     }
-    button {
-      padding: 5px 10px;
-      border: none;
-      background-color: black;
-      color: white;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    button:hover {
-      background-color: #444;
-    }
-    .bulk-actions {
+
+    .file-list {
       margin-top: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
-    .hidden {
-      display: none;
+
+    .file-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .file-row input[type="checkbox"] {
+      margin-right: 10px;
+    }
+
+    .file-row .file-name {
+      margin-right: 10px;
+    }
+
+    .file-row .view-button {
+      margin-right: 10px;
     }
   </style>
 </head>
 <body>
   <h1>🕊️ Welcome to Solace Portal</h1>
-  <div class="file-container" id="fileList"></div>
 
-  <div class="bulk-actions">
-    <button onclick="deleteSelected()">🗑️ Delete Selected</button>
-    <button onclick="sendFile()">✉️ Send File to Me</button>
+  <textarea id="message" placeholder="Type your message..."></textarea><br />
+  <button class="button" onclick="sendMessage()">Send to Me</button>
+
+  <div class="file-section">
+    <input type="file" id="fileInput" />
+    <button class="button" onclick="uploadFile()">Upload File</button>
+  </div>
+
+  <div class="file-section">
+    <h2>📁 Uploaded Files</h2>
+    <div id="fileList" class="file-list"></div>
+    <button class="button" onclick="deleteSelected()">🗑️ Delete Selected</button>
   </div>
 
   <script>
-    async function fetchFiles() {
+    async function sendMessage() {
+      const msg = document.getElementById('message').value;
+      if (!msg.trim()) return;
+      await fetch('/send-message', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: msg })
+      });
+      document.getElementById('message').value = '';
+    }
+
+    async function uploadFile() {
+      const input = document.getElementById('fileInput');
+      if (!input.files.length) return;
+      const formData = new FormData();
+      formData.append('file', input.files[0]);
+      await fetch('/upload', { method: 'POST', body: formData });
+      input.value = '';
+      loadFiles();
+    }
+
+    async function loadFiles() {
       const res = await fetch('/list-files');
       const data = await res.json();
-      const list = document.getElementById('fileList');
-      list.innerHTML = '';
-
+      const container = document.getElementById('fileList');
+      container.innerHTML = '';
       data.files.forEach(file => {
-        const div = document.createElement('div');
-        div.className = 'file-item';
-        div.innerHTML = `
-          <label>
-            <input type="checkbox" class="select-box" value="${file.name}">
-            ${file.name} (${file.size} MB)
-          </label>
-          <div class="file-actions">
-            <button onclick="viewFile('${file.name}')">👁️ View</button>
-            <button onclick="deleteFile('${file.name}')">❌ Delete</button>
-          </div>
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.innerHTML = `
+          <input type="checkbox" value="${file}" />
+          <span class="file-name">${file}</span>
+          <a class="button view-button" href="/uploads/${file}" target="_blank">🔍 View</a>
         `;
-        list.appendChild(div);
+        container.appendChild(row);
       });
     }
 
-    async function deleteFile(filename) {
-      const confirmDelete = confirm(`Are you sure you want to delete "${filename}"?`);
-      if (!confirmDelete) return;
-
-      const res = await fetch(`/delete-file/${filename}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchFiles();
-      } else {
-        alert('❌ Failed to delete file.');
-      }
-    }
-
-    function viewFile(name) {
-      window.open(`/uploads/${name}`, '_blank');
-    }
-
     async function deleteSelected() {
-      const selected = document.querySelectorAll('.select-box:checked');
-      for (let checkbox of selected) {
-        await deleteFile(checkbox.value);
-      }
+      const checkboxes = document.querySelectorAll('.file-row input[type="checkbox"]:checked');
+      const filesToDelete = Array.from(checkboxes).map(cb => cb.value);
+      if (!filesToDelete.length) return;
+      const confirmDelete = confirm("Are you sure you want to delete selected file(s)?");
+      if (!confirmDelete) return;
+      await Promise.all(filesToDelete.map(filename =>
+        fetch(`/delete-file/${filename}`, { method: 'DELETE' })
+      ));
+      loadFiles();
     }
 
-    async function sendFile() {
-      const selected = document.querySelectorAll('.select-box:checked');
-      if (selected.length !== 1) {
-        alert("⚠️ Please select only one file to send.");
-        return;
-      }
-
-      const filename = selected[0].value;
-      const res = await fetch(`/send-file/${filename}`);
-      if (res.ok) {
-        alert("✅ File sent to Telegram.");
-      } else {
-        alert("❌ Failed to send file.");
-      }
-    }
-
-    fetchFiles();
+    window.onload = loadFiles;
   </script>
 </body>
 </html>
