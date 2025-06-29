@@ -20,37 +20,46 @@ def index():
 def webhook():
     data = request.json
     if 'message' in data:
-        chat_id = data['message']['chat']['id']
-        
-        if 'document' in data['message']:
-            file_id = data['message']['document']['file_id']
-            filename = data['message']['document']['file_name']
+        message = data['message']
+        chat_id = message['chat']['id']
 
-            file_info_res = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={file_id}").json()
-
-            if "result" in file_info_res:
-                file_path = file_info_res["result"]["file_path"]
-                file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
-                file_content = requests.get(file_url).content
-
-                save_path = os.path.join(UPLOAD_FOLDER, filename)
-                with open(save_path, "wb") as f:
-                    f.write(file_content)
-
-                reply = f"✅ File saved to Solace Portal: {filename}"
-            else:
-                reply = "❌ Failed to fetch file from Telegram. Try again."
-
-        else:
-            text = data['message'].get('text', '')
+        # Handle text messages
+        if 'text' in message:
+            text = message['text']
             with open(LOG_FILE, "a", encoding="utf-8") as file:
                 file.write(text + "\n")
-            reply = f"🌟 Received: {text}"
 
-        requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
-            "chat_id": chat_id,
-            "text": reply
-        })
+            reply = f"🌟 Received: {text}"
+            requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": reply
+            })
+
+        # Handle file attachments (document)
+        elif 'document' in message:
+            file_id = message['document']['file_id']
+            file_name = message['document']['file_name']
+
+            # Get file path from Telegram
+            file_info_res = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={file_id}").json()
+            if 'result' in file_info_res:
+                file_path = file_info_res['result']['file_path']
+                file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+
+                # Download and save
+                file_data = requests.get(file_url)
+                with open(os.path.join(UPLOAD_FOLDER, file_name), 'wb') as f:
+                    f.write(file_data.content)
+
+                requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+                    "chat_id": chat_id,
+                    "text": f"✅ File saved to Solace Portal: {file_name}"
+                })
+            else:
+                requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+                    "chat_id": chat_id,
+                    "text": "❌ Could not retrieve file info."
+                })
 
     return '', 200
 
@@ -82,23 +91,22 @@ def upload_file():
 def list_files():
     files = []
     for filename in os.listdir(UPLOAD_FOLDER):
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        size_mb = round(os.path.getsize(filepath) / (1024 * 1024), 2)
-        files.append({"name": filename, "size": size_mb})
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        size = round(os.path.getsize(path) / 1024, 2)
+        files.append({"name": filename, "size": size})
     return jsonify({"files": files})
+
+@app.route('/uploads/<path:filename>', methods=['GET'])
+def download_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 @app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(path):
+        os.remove(path)
         return jsonify({"message": f"🗑️ Deleted: {filename}"}), 200
-    else:
-        return jsonify({"message": "❌ File not found."}), 404
-
-@app.route('/uploads/<filename>', methods=['GET'])
-def serve_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    return jsonify({"message": "❌ File not found."}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
