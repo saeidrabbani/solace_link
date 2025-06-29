@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)  # ✅ Allow all origins (including Netlify)
@@ -57,6 +58,26 @@ def upload_file():
     file.save(save_path)
 
     return jsonify({"message": f"✅ File uploaded: {filename}"}), 200
+
+# 🟢 New: List all uploaded files
+@app.route('/list-files', methods=['GET'])
+def list_files():
+    files = []
+    for filename in os.listdir(UPLOAD_FOLDER):
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        if os.path.isfile(filepath):
+            size_kb = round(os.path.getsize(filepath) / 1024, 2)
+            files.append({'name': filename, 'size': size_kb})
+    return jsonify({'files': files})
+
+# 🗑️ New: Delete a specific file
+@app.route('/delete-file/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    filepath = os.path.join(UPLOAD_FOLDER, secure_filename(filename))
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        return jsonify({'message': f'{filename} deleted.'})
+    return jsonify({'message': 'File not found.'}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
