@@ -23,14 +23,41 @@ def webhook():
         chat_id = data['message']['chat']['id']
         text = data['message'].get('text', '')
 
-        with open(LOG_FILE, "a", encoding="utf-8") as file:
-            file.write(text + "\n")
+        # ✅ If text message exists, log it
+        if text:
+            with open(LOG_FILE, "a", encoding="utf-8") as file:
+                file.write(text + "\n")
 
-        reply = f"🌟 Received: {text}"
-        requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
-            "chat_id": chat_id,
-            "text": reply
-        })
+            reply = f"🌟 Received: {text}"
+            requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": reply
+            })
+
+        # ✅ If file (document) received
+        if 'document' in data['message']:
+            file_id = data['message']['document']['file_id']
+            file_name = data['message']['document']['file_name']
+
+            # Step 1: Get file path from Telegram
+            file_info_url = f"{TELEGRAM_API_URL}/getFile?file_id={file_id}"
+            file_info_res = requests.get(file_info_url).json()
+            file_path = file_info_res['result']['file_path']
+
+            # Step 2: Download file from Telegram
+            file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+            file_data = requests.get(file_url).content
+
+            # Step 3: Save file to uploads
+            save_path = os.path.join(UPLOAD_FOLDER, file_name)
+            with open(save_path, 'wb') as f:
+                f.write(file_data)
+
+            # Step 4: Confirm to user
+            requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": f"📥 File '{file_name}' saved to Solace Portal."
+            })
 
     return '', 200
 
