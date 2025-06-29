@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
@@ -60,29 +60,30 @@ def upload_file():
 
 @app.route('/list-files', methods=['GET'])
 def list_files():
+    if not os.path.exists(UPLOAD_FOLDER):
+        return jsonify({"files": []})
+
     files = []
-    for fname in os.listdir(UPLOAD_FOLDER):
-        fpath = os.path.join(UPLOAD_FOLDER, fname)
-        if os.path.isfile(fpath):
-            size_kb = round(os.path.getsize(fpath) / 1024, 2)
-            files.append({"name": fname, "size": size_kb})
+    for filename in os.listdir(UPLOAD_FOLDER):
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        if os.path.isfile(path):
+            size_kb = round(os.path.getsize(path) / 1024, 2)
+            files.append({"name": filename, "size": size_kb})
+
     return jsonify({"files": files})
+
+@app.route('/uploads/<path:filename>')
+def serve_uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 @app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    try:
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return jsonify({"message": f"🗑️ Deleted: {filename}"})
-        else:
-            return jsonify({"message": "❌ File not found."}), 404
-    except Exception as e:
-        return jsonify({"message": f"❌ Error deleting: {str(e)}"}), 500
-
-@app.route('/uploads/<filename>', methods=['GET'])
-def serve_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return jsonify({"message": f"🗑️ Deleted: {filename}"}), 200
+    else:
+        return jsonify({"message": "❌ File not found."}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
