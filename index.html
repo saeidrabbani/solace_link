@@ -43,12 +43,6 @@
       width: 90%;
       max-width: 600px;
       border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .file-info {
-      flex: 1;
       text-align: left;
     }
     .file-card a {
@@ -63,12 +57,8 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    .delete-selected {
-      background-color: #ff4d4d;
-      color: white;
-      font-weight: bold;
-      padding: 10px 20px;
-      margin: 20px;
+    .checkbox {
+      margin-right: 10px;
     }
   </style>
 </head>
@@ -87,8 +77,8 @@
 
   <div id="latest">🔄 Loading...</div>
   <h2>📁 Uploaded Files</h2>
-  <button class="delete-selected" onclick="deleteSelectedFiles()">🗑️ Delete Selected</button>
   <div id="fileList">Loading files...</div>
+  <button class="delete-btn" onclick="deleteSelected()">🗑️ Delete Selected</button>
 
   <script>
     async function sendMessage() {
@@ -159,12 +149,9 @@
           const div = document.createElement("div");
           div.className = "file-card";
           div.innerHTML = `
-            <input type="checkbox" class="file-checkbox" value="${file.name}">
-            <div class="file-info">
-              📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
-              <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
-            </div>
-            <button class="delete-btn" onclick="deleteFile('${file.name}')">🗑️ Delete</button>
+            <input type="checkbox" class="checkbox" value="${file.name}" />
+            📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
+            <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
           `;
           fileList.appendChild(div);
         });
@@ -173,33 +160,28 @@
       }
     }
 
-    async function deleteFile(filename) {
-      if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
-
-      try {
-        const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
-          method: "DELETE"
-        });
-        const result = await res.json();
-        alert(result.message || "✅ File deleted.");
-        listFiles();
-      } catch (err) {
-        alert("❌ Delete failed: " + err.message);
-      }
-    }
-
-    async function deleteSelectedFiles() {
-      const checkboxes = document.querySelectorAll(".file-checkbox:checked");
+    async function deleteSelected() {
+      const checkboxes = document.querySelectorAll(".checkbox:checked");
       if (checkboxes.length === 0) {
-        alert("Please select at least one file.");
+        alert("❗ No files selected.");
         return;
       }
 
-      if (!confirm("Are you sure you want to delete selected files?")) return;
+      if (!confirm("Are you sure you want to delete the selected files?")) return;
 
       for (const checkbox of checkboxes) {
-        await deleteFile(checkbox.value);
+        const filename = checkbox.value;
+        try {
+          const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
+            method: "DELETE"
+          });
+          const result = await res.json();
+          console.log(result.message || "✅ Deleted " + filename);
+        } catch (err) {
+          alert("❌ Delete failed for " + filename + ": " + err.message);
+        }
       }
+      listFiles();
     }
 
     fetchLatest();
