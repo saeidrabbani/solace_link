@@ -1,85 +1,105 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 import requests
 import os
 
 app = Flask(__name__)
+CORS(app)
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-
+BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-latest_message = {"text": "", "files": []}
+@app.route('/')
+def index():
+    return "Solace Bot is running..."
 
-
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['POST'])
 def webhook():
-    data = request.get_json()
-    if "message" in data:
-        message = data["message"]
-        if "text" in message:
-            latest_message["text"] = message["text"]
-            latest_message["files"] = []
-        elif "document" in message:
-            file_id = message["document"]["file_id"]
-            file_name = message["document"]["file_name"]
+    data = request.json
+    if 'message' in data:
+        chat_id = data['message']['chat']['id']
+        
+        if 'document' in data['message']:
+            file_id = data['message']['document']['file_id']
+            filename = data['message']['document']['file_name']
 
-            file_info_res = requests.get(f"{BASE_URL}/getFile?file_id={file_id}").json()
-            if "result" not in file_info_res:
-                return "Error getting file info", 500
+            file_info_res = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={file_id}").json()
 
-            file_path = file_info_res["result"]["file_path"]
-            file_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}"
-            file_data = requests.get(file_url).content
+            if "result" in file_info_res:
+                file_path = file_info_res["result"]["file_path"]
+                file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+                file_content = requests.get(file_url).content
 
-            file_save_path = os.path.join(UPLOAD_FOLDER, file_name)
-            with open(file_save_path, "wb") as f:
-                f.write(file_data)
+                save_path = os.path.join(UPLOAD_FOLDER, filename)
+                with open(save_path, "wb") as f:
+                    f.write(file_content)
 
-            latest_message["text"] = f"📂 File '{file_name}' saved to Solace Portal"
-            latest_message["files"] = [{"name": file_name, "size": round(len(file_data)/1024, 2)}]
+                reply = f"✅ File saved to Solace Portal: {filename}"
+            else:
+                reply = "❌ Failed to fetch file from Telegram. Try again."
 
-    return jsonify(success=True)
+        else:
+            text = data['message'].get('text', '')
+            with open(LOG_FILE, "a", encoding="utf-8") as file:
+                file.write(text + "\n")
+            reply = f"🌟 Received: {text}"
 
+        requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+            "chat_id": chat_id,
+            "text": reply
+        })
 
-@app.route("/latest-message", methods=["GET"])
+    return '', 200
+
+@app.route('/latest-message', methods=['GET'])
 def get_latest_message():
-    return jsonify(latest_message)
+    if not os.path.exists(LOG_FILE):
+        return jsonify({"message": ""})
+    
+    with open(LOG_FILE, "r", encoding="utf-8") as file:
+        lines = file.readlines()
+        if lines:
+            return jsonify({"message": lines[-1].strip()})
+    
+    return jsonify({"message": ""})
 
+@app.route('/upload-file', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"message": "❌ No file uploaded."}), 400
 
-@app.route("/list-files", methods=["GET"])
+    file = request.files['file']
+    filename = file.filename
+    save_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(save_path)
+
+    return jsonify({"message": f"✅ File uploaded: {filename}"}), 200
+
+@app.route('/list-files', methods=['GET'])
 def list_files():
     files = []
     for filename in os.listdir(UPLOAD_FOLDER):
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.isfile(path):
-            size_kb = round(os.path.getsize(path) / 1024, 2)
-            files.append({"name": filename, "size": size_kb})
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        size_mb = round(os.path.getsize(filepath) / (1024 * 1024), 2)
+        files.append({"name": filename, "size": size_mb})
     return jsonify({"files": files})
 
-
-@app.route("/uploads/<filename>", methods=["GET"])
-def get_file(filename):
-    from flask import send_from_directory
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
-
-@app.route("/delete-file/<filename>", methods=["DELETE"])
+@app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     if os.path.exists(file_path):
         os.remove(file_path)
-        return jsonify({"success": True})
-    return jsonify({"success": False, "error": "File not found"}), 404
+        return jsonify({"message": f"🗑️ Deleted: {filename}"}), 200
+    else:
+        return jsonify({"message": "❌ File not found."}), 404
 
+@app.route('/uploads/<filename>', methods=['GET'])
+def serve_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
-@app.route("/")
-def home():
-    return "SolaceBot is running."
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
