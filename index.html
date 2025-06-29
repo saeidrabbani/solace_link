@@ -6,105 +6,125 @@
   <title>Solace Portal</title>
   <style>
     body {
+      background-color: white;
+      color: black;
       font-family: Arial, sans-serif;
-      background: #0f1115;
-      color: #fff;
-      text-align: center;
-      padding: 2rem;
+      padding: 20px;
     }
     h1 {
-      margin-bottom: 1rem;
+      text-align: center;
     }
-    textarea, input[type="file"] {
-      width: 90%;
-      max-width: 500px;
-      margin: 1rem 0;
+    .file-container {
+      margin-top: 20px;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border: 1px solid #aaa;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+    .file-actions {
+      display: flex;
+      gap: 10px;
     }
     button {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      margin: 1rem;
+      padding: 5px 10px;
       border: none;
+      background-color: black;
+      color: white;
       cursor: pointer;
+      border-radius: 4px;
     }
-    .file-entry {
-      margin: 0.5rem 0;
+    button:hover {
+      background-color: #444;
+    }
+    .bulk-actions {
+      margin-top: 20px;
       display: flex;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
-      gap: 1rem;
+    }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>🔒 Solace Portal</h1>
-  <textarea id="message" rows="5" placeholder="Type your message..."></textarea><br>
-  <button onclick="sendMessage()">Send to Me</button><br>
-  <input type="file" id="fileInput" />
-  <button onclick="uploadFile()">Upload File</button><br><br>
-  <h2>📂 Uploaded Files</h2>
-  <div id="fileList">Loading...</div>
-  <button onclick="deleteSelected()">🗑️ Delete Selected</button>
+  <h1>🕊️ Welcome to Solace Portal</h1>
+  <div class="file-container" id="fileList"></div>
+
+  <div class="bulk-actions">
+    <button onclick="deleteSelected()">🗑️ Delete Selected</button>
+    <button onclick="sendFile()">✉️ Send File to Me</button>
+  </div>
 
   <script>
-    async function sendMessage() {
-      const message = document.getElementById('message').value;
-      await fetch(`/.netlify/functions/sendMessage?message=${encodeURIComponent(message)}`);
-      alert("✅ Message sent!");
-    }
-
-    async function uploadFile() {
-      const fileInput = document.getElementById('fileInput');
-      if (!fileInput.files.length) return alert("❌ No file selected.");
-      const formData = new FormData();
-      formData.append("file", fileInput.files[0]);
-
-      const res = await fetch("https://solacebot.onrender.com/upload-file", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await res.json();
-      alert(result.message);
-      loadFiles();
-    }
-
-    async function loadFiles() {
-      const res = await fetch("https://solacebot.onrender.com/list-files");
+    async function fetchFiles() {
+      const res = await fetch('/list-files');
       const data = await res.json();
-      const container = document.getElementById("fileList");
-      container.innerHTML = "";
+      const list = document.getElementById('fileList');
+      list.innerHTML = '';
 
       data.files.forEach(file => {
-        const row = document.createElement("div");
-        row.className = "file-entry";
-        row.innerHTML = `
-          <input type="checkbox" value="${file.name}">
-          <span>${file.name} (${file.size} MB)</span>
-          <button onclick="window.open('https://solacebot.onrender.com/uploads/${file.name}', '_blank')">🔍 View</button>
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        div.innerHTML = `
+          <label>
+            <input type="checkbox" class="select-box" value="${file.name}">
+            ${file.name} (${file.size} MB)
+          </label>
+          <div class="file-actions">
+            <button onclick="viewFile('${file.name}')">👁️ View</button>
+            <button onclick="deleteFile('${file.name}')">❌ Delete</button>
+          </div>
         `;
-        container.appendChild(row);
+        list.appendChild(div);
       });
+    }
+
+    async function deleteFile(filename) {
+      const confirmDelete = confirm(`Are you sure you want to delete "${filename}"?`);
+      if (!confirmDelete) return;
+
+      const res = await fetch(`/delete-file/${filename}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchFiles();
+      } else {
+        alert('❌ Failed to delete file.');
+      }
+    }
+
+    function viewFile(name) {
+      window.open(`/uploads/${name}`, '_blank');
     }
 
     async function deleteSelected() {
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-      if (!checkboxes.length) return alert("❌ No file selected.");
-
-      if (!confirm("❗ Are you sure you want to delete selected file(s)?")) return;
-
-      for (const cb of checkboxes) {
-        await fetch(`https://solacebot.onrender.com/delete-file/${cb.value}`, {
-          method: "DELETE",
-        });
+      const selected = document.querySelectorAll('.select-box:checked');
+      for (let checkbox of selected) {
+        await deleteFile(checkbox.value);
       }
-
-      alert("✅ Selected file(s) deleted.");
-      loadFiles();
     }
 
-    loadFiles();
+    async function sendFile() {
+      const selected = document.querySelectorAll('.select-box:checked');
+      if (selected.length !== 1) {
+        alert("⚠️ Please select only one file to send.");
+        return;
+      }
+
+      const filename = selected[0].value;
+      const res = await fetch(`/send-file/${filename}`);
+      if (res.ok) {
+        alert("✅ File sent to Telegram.");
+      } else {
+        alert("❌ Failed to send file.");
+      }
+    }
+
+    fetchFiles();
   </script>
 </body>
 </html>
