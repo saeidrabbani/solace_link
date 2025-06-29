@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,20 +36,26 @@
       color: #64ffda;
       font-size: 18px;
     }
-    .file-entry {
-      background-color: #1e1e1e;
-      margin: 10px auto;
+    .file-card {
+      background: #1a1a1a;
+      border: 1px solid #444;
       padding: 10px;
-      border-radius: 8px;
+      margin: 10px auto;
       width: 90%;
       max-width: 600px;
-      text-align: left;
+      border-radius: 6px;
     }
-    .file-entry button {
-      float: right;
-      background-color: #ff5252;
-      color: white;
-      margin-left: 10px;
+    .file-card a {
+      color: #64ffda;
+      margin-left: 8px;
+    }
+    .delete-btn {
+      background-color: #ff4d4d;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -60,14 +67,14 @@
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
+
   <br>
   <input type="file" id="fileInput" />
   <button onclick="uploadFile()">📤 Upload File</button>
 
   <div id="latest">🔄 Loading...</div>
-  <hr style="margin: 40px auto; width: 60%; border: 1px solid #444;">
   <h2>📁 Uploaded Files</h2>
-  <div id="fileList">🔄 Loading files...</div>
+  <div id="fileList">Loading files...</div>
 
   <script>
     async function sendMessage() {
@@ -81,7 +88,7 @@
       try {
         const res = await fetch("/.netlify/functions/getlatestmessage");
         const data = await res.json();
-        document.getElementById("latest").innerText = `🔁 Latest: ${data.message}`;
+        document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
       } catch {
         document.getElementById("latest").innerText = "⚠️ Error loading message";
       }
@@ -115,46 +122,48 @@
         });
         const result = await res.json();
         alert(result.message || "✅ File uploaded.");
-        loadFileList();
+        listFiles();
       } catch (err) {
         alert("❌ Upload failed: " + err.message);
       }
     }
 
-    async function loadFileList() {
-      const res = await fetch("https://solacebot.onrender.com/list-files");
-      const data = await res.json();
-      const container = document.getElementById("fileList");
-      container.innerHTML = "";
+    async function listFiles() {
+      const fileList = document.getElementById("fileList");
+      fileList.innerHTML = "🔄 Loading...";
 
-      if (!data.files.length) {
-        container.innerText = "No files found.";
-        return;
+      try {
+        const res = await fetch("https://solacebot.onrender.com/list-files");
+        const data = await res.json();
+        if (!data.files.length) {
+          fileList.innerHTML = "❌ No files found.";
+          return;
+        }
+
+        fileList.innerHTML = "";
+        data.files.forEach(file => {
+          const div = document.createElement("div");
+          div.className = "file-card";
+          div.innerHTML = `
+            📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
+            <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
+            <button class="delete-btn" onclick="deleteFile('${file.name}')">🗑️ Delete</button>
+          `;
+          fileList.appendChild(div);
+        });
+      } catch (err) {
+        fileList.innerHTML = "❌ Failed to load file list.";
       }
-
-      data.files.forEach(file => {
-        const entry = document.createElement("div");
-        entry.className = "file-entry";
-        entry.innerHTML = `
-          📄 <strong>${file.name}</strong> – ${file.size} KB
-          <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
-          <button onclick="deleteFile('${file.name}')">🗑️ Delete</button>
-        `;
-        container.appendChild(entry);
-      });
     }
 
     async function deleteFile(filename) {
-      const confirmDelete = confirm(`Are you sure you want to delete ${filename}?`);
-      if (!confirmDelete) return;
-
       try {
-        const res = await fetch(`https://solacebot.onrender.com/delete-file?filename=${encodeURIComponent(filename)}`, {
+        const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
           method: "DELETE"
         });
         const result = await res.json();
-        alert(result.message || "✅ Deleted.");
-        loadFileList();
+        alert(result.message || "✅ File deleted.");
+        listFiles();
       } catch (err) {
         alert("❌ Delete failed: " + err.message);
       }
@@ -162,7 +171,7 @@
 
     fetchLatest();
     setInterval(fetchLatest, 15000);
-    loadFileList();
+    listFiles();
   </script>
 </body>
 </html>
