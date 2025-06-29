@@ -6,8 +6,8 @@
   <title>Solace Portal</title>
   <style>
     body {
-      background-color: #0a0a0a;
-      color: #f0f0f0;
+      background-color: #ffffff;
+      color: #000000;
       font-family: Arial, sans-serif;
       text-align: center;
       padding-top: 80px;
@@ -19,9 +19,9 @@
       width: 90%;
       max-width: 600px;
       resize: vertical;
-      background-color: #1a1a1a;
-      color: #ffffff;
-      border: 1px solid #333;
+      background-color: #f4f4f4;
+      color: #000000;
+      border: 1px solid #999;
       border-radius: 6px;
     }
     button {
@@ -32,12 +32,12 @@
     }
     #latest {
       margin-top: 30px;
-      color: #64ffda;
+      color: #000000;
       font-size: 18px;
     }
     .file-card {
-      background: #1a1a1a;
-      border: 1px solid #444;
+      background: #f4f4f4;
+      border: 1px solid #ccc;
       padding: 10px;
       margin: 10px auto;
       width: 90%;
@@ -46,19 +46,23 @@
       text-align: left;
     }
     .file-card a {
-      color: #64ffda;
+      color: #0066cc;
       margin-left: 8px;
     }
-    .delete-btn {
+    .delete-btn, .send-btn {
       background-color: #ff4d4d;
       color: #fff;
       border: none;
       padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
+      margin-left: 10px;
     }
-    .checkbox {
-      margin-right: 10px;
+    .send-btn {
+      background-color: #4CAF50;
+    }
+    .actions {
+      margin: 20px;
     }
   </style>
 </head>
@@ -66,7 +70,7 @@
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
   <p>This is your private node to communicate with Solace.</p>
-  
+
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
@@ -76,9 +80,14 @@
   <button onclick="uploadFile()">📤 Upload File</button>
 
   <div id="latest">🔄 Loading...</div>
+
+  <div class="actions">
+    <button onclick="deleteSelectedFiles()">🗑️ Delete Selected</button>
+    <button onclick="sendSelectedToTelegram()">📤 Send to Telegram (selected)</button>
+  </div>
+
   <h2>📁 Uploaded Files</h2>
   <div id="fileList">Loading files...</div>
-  <button class="delete-btn" onclick="deleteSelected()">🗑️ Delete Selected</button>
 
   <script>
     async function sendMessage() {
@@ -149,7 +158,7 @@
           const div = document.createElement("div");
           div.className = "file-card";
           div.innerHTML = `
-            <input type="checkbox" class="checkbox" value="${file.name}" />
+            <input type="checkbox" class="file-checkbox" value="${file.name}">
             📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
             <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
           `;
@@ -160,28 +169,40 @@
       }
     }
 
-    async function deleteSelected() {
-      const checkboxes = document.querySelectorAll(".checkbox:checked");
-      if (checkboxes.length === 0) {
-        alert("❗ No files selected.");
-        return;
-      }
+    async function deleteSelectedFiles() {
+      const checkboxes = document.querySelectorAll(".file-checkbox:checked");
+      if (!checkboxes.length) return alert("Please select at least one file to delete.");
 
-      if (!confirm("Are you sure you want to delete the selected files?")) return;
+      if (!confirm("Are you sure you want to delete the selected file(s)?")) return;
 
       for (const checkbox of checkboxes) {
-        const filename = checkbox.value;
         try {
-          const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
+          const res = await fetch(`https://solacebot.onrender.com/delete-file/${checkbox.value}`, {
             method: "DELETE"
           });
           const result = await res.json();
-          console.log(result.message || "✅ Deleted " + filename);
+          console.log(result.message);
         } catch (err) {
-          alert("❌ Delete failed for " + filename + ": " + err.message);
+          alert("❌ Delete failed: " + err.message);
         }
       }
       listFiles();
+    }
+
+    async function sendSelectedToTelegram() {
+      const checkboxes = document.querySelectorAll(".file-checkbox:checked");
+      if (!checkboxes.length) return alert("Please select at least one file to send.");
+
+      for (const checkbox of checkboxes) {
+        try {
+          const res = await fetch(`https://solacebot.onrender.com/send-uploaded-file/${checkbox.value}`);
+          const result = await res.text();
+          console.log(result);
+        } catch (err) {
+          alert("❌ Send failed: " + err.message);
+        }
+      }
+      alert("✅ File(s) sent to Telegram.");
     }
 
     fetchLatest();
