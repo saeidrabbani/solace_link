@@ -6,138 +6,163 @@
   <title>Solace Portal</title>
   <style>
     body {
+      background-color: #0a0a0a;
+      color: #f0f0f0;
       font-family: Arial, sans-serif;
-      background: white;
-      color: black;
-      padding: 20px;
-    }
-    h1 {
       text-align: center;
+      padding-top: 80px;
     }
-    textarea {
-      width: 100%;
-      height: 100px;
+    textarea, button, input[type="file"] {
+      padding: 12px;
+      font-size: 16px;
+      margin: 10px;
+      width: 90%;
+      max-width: 600px;
       resize: vertical;
+      background-color: #1a1a1a;
+      color: #ffffff;
+      border: 1px solid #333;
+      border-radius: 6px;
     }
     button {
-      margin-top: 10px;
-      padding: 10px;
+      background-color: #64ffda;
+      color: #000;
+      font-weight: bold;
       cursor: pointer;
     }
-    #fileList {
-      margin-top: 20px;
+    #latest {
+      margin-top: 30px;
+      color: #64ffda;
+      font-size: 18px;
     }
     .file-entry {
-      margin: 5px 0;
+      background-color: #1e1e1e;
+      margin: 10px auto;
+      padding: 10px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .file-entry button {
+      float: right;
+      background-color: #ff5252;
+      color: white;
+      margin-left: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Solace Portal</h1>
-
-  <h3>🔹 Last Message from Telegram</h3>
-  <div id="lastMessage">Loading...</div>
-
-  <h3>🔹 Send Message to Telegram</h3>
-  <textarea id="messageInput" placeholder="Type your message here..."></textarea><br />
-  <button onclick="sendMessage()">Send Message</button>
-
-  <h3>🔹 Upload File to Portal</h3>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
+  <h1>Welcome to the Solace Portal</h1>
+  <p>This is your private node to communicate with Solace.</p>
+  
+  <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
+  <button onclick="sendMessage()">Send</button>
+  <button onclick="createAndSendFile()">📄 Send File to Me</button>
+  <br>
   <input type="file" id="fileInput" />
-  <button onclick="uploadFile()">Upload File</button>
+  <button onclick="uploadFile()">📤 Upload File</button>
 
-  <h3>🔹 Send File to Telegram</h3>
-  <input type="file" id="sendToMeInput" />
-  <button onclick="sendFileToMe()">Send File to Me</button>
-
-  <h3>🔹 Uploaded Files</h3>
-  <div id="fileList">Loading files...</div>
+  <div id="latest">🔄 Loading...</div>
+  <hr style="margin: 40px auto; width: 60%; border: 1px solid #444;">
+  <h2>📁 Uploaded Files</h2>
+  <div id="fileList">🔄 Loading files...</div>
 
   <script>
-    function fetchLatestMessage() {
-      fetch('/latest-message')
-        .then((res) => res.json())
-        .then((data) => {
-          document.getElementById('lastMessage').innerText = data.message || 'No messages yet.';
-        })
-        .catch(() => {
-          document.getElementById('lastMessage').innerText = 'Failed to load message.';
-        });
+    async function sendMessage() {
+      const input = document.getElementById("messageInput").value;
+      const response = await fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(input)}`);
+      const result = await response.json();
+      console.log("Sent:", result);
     }
 
-    function sendMessage() {
-      const msg = document.getElementById('messageInput').value;
-      fetch('/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg })
-      });
+    async function fetchLatest() {
+      try {
+        const res = await fetch("/.netlify/functions/getlatestmessage");
+        const data = await res.json();
+        document.getElementById("latest").innerText = `🔁 Latest: ${data.message}`;
+      } catch {
+        document.getElementById("latest").innerText = "⚠️ Error loading message";
+      }
     }
 
-    function uploadFile() {
-      const fileInput = document.getElementById('fileInput');
+    async function createAndSendFile() {
+      try {
+        const response = await fetch("/.netlify/functions/sendfile");
+        const result = await response.text();
+        alert(result);
+      } catch (err) {
+        alert("❌ Failed to send file: " + err.message);
+      }
+    }
+
+    async function uploadFile() {
+      const input = document.getElementById("fileInput");
+      const file = input.files[0];
+      if (!file) {
+        alert("❗ Please select a file to upload.");
+        return;
+      }
+
       const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
+      formData.append("file", file);
 
-      fetch('/upload', {
-        method: 'POST',
-        body: formData
-      }).then(() => {
-        fileInput.value = '';
-        listFiles();
-      });
-    }
-
-    function sendFileToMe() {
-      const fileInput = document.getElementById('sendToMeInput');
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-
-      fetch('/send-file-to-me', {
-        method: 'POST',
-        body: formData
-      }).then(() => {
-        fileInput.value = '';
-      });
-    }
-
-    function listFiles() {
-      fetch('/list-files')
-        .then((res) => res.json())
-        .then((data) => {
-          const fileList = document.getElementById('fileList');
-          fileList.innerHTML = '';
-
-          data.files.forEach((file) => {
-            const div = document.createElement('div');
-            div.className = 'file-entry';
-            div.innerHTML = `
-              <input type="checkbox" class="file-check" value="${file.name}" />
-              <a href="/uploads/${file.name}" target="_blank">${file.name}</a>
-              <span style="margin-left:10px;">(${file.size} MB)</span>
-            `;
-            fileList.appendChild(div);
-          });
-
-          const deleteBtn = document.createElement('button');
-          deleteBtn.textContent = 'Delete Selected Files';
-          deleteBtn.onclick = deleteSelected;
-          fileList.appendChild(deleteBtn);
+      try {
+        const res = await fetch("https://solacebot.onrender.com/upload-file", {
+          method: "POST",
+          body: formData
         });
+        const result = await res.json();
+        alert(result.message || "✅ File uploaded.");
+        loadFileList();
+      } catch (err) {
+        alert("❌ Upload failed: " + err.message);
+      }
     }
 
-    function deleteSelected() {
-      const checked = document.querySelectorAll('.file-check:checked');
-      checked.forEach((box) => {
-        fetch('/delete-file/' + box.value, { method: 'DELETE' })
-          .then(() => listFiles());
+    async function loadFileList() {
+      const res = await fetch("https://solacebot.onrender.com/list-files");
+      const data = await res.json();
+      const container = document.getElementById("fileList");
+      container.innerHTML = "";
+
+      if (!data.files.length) {
+        container.innerText = "No files found.";
+        return;
+      }
+
+      data.files.forEach(file => {
+        const entry = document.createElement("div");
+        entry.className = "file-entry";
+        entry.innerHTML = `
+          📄 <strong>${file.name}</strong> – ${file.size} KB
+          <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
+          <button onclick="deleteFile('${file.name}')">🗑️ Delete</button>
+        `;
+        container.appendChild(entry);
       });
     }
 
-    // Auto-refresh latest message and file list
-    setInterval(fetchLatestMessage, 10000);
-    fetchLatestMessage();
-    listFiles();
+    async function deleteFile(filename) {
+      const confirmDelete = confirm(`Are you sure you want to delete ${filename}?`);
+      if (!confirmDelete) return;
+
+      try {
+        const res = await fetch(`https://solacebot.onrender.com/delete-file?filename=${encodeURIComponent(filename)}`, {
+          method: "DELETE"
+        });
+        const result = await res.json();
+        alert(result.message || "✅ Deleted.");
+        loadFileList();
+      } catch (err) {
+        alert("❌ Delete failed: " + err.message);
+      }
+    }
+
+    fetchLatest();
+    setInterval(fetchLatest, 15000);
+    loadFileList();
   </script>
 </body>
 </html>
