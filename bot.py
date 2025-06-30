@@ -10,7 +10,7 @@ BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
-CHAT_ID = "589089595"  # Telegram chat ID baraye ersal file
+CHAT_ID = "589089595"  # Saeid's Telegram chat ID
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/')
