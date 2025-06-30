@@ -43,14 +43,7 @@
       width: 90%;
       max-width: 600px;
       border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .file-info {
       text-align: left;
-      flex-grow: 1;
-      margin-left: 10px;
     }
     .file-card a {
       color: #64ffda;
@@ -64,6 +57,9 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    .checkbox {
+      margin-right: 10px;
+    }
   </style>
 </head>
 <body>
@@ -74,7 +70,6 @@
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
-  <button onclick="sendSelectedToTelegram()">📤 Send to Telegram (selected)</button>
 
   <br>
   <input type="file" id="fileInput" />
@@ -83,6 +78,7 @@
   <div id="latest">🔄 Loading...</div>
   <h2>📁 Uploaded Files</h2>
   <div id="fileList">Loading files...</div>
+  <button class="delete-btn" onclick="deleteSelected()">🗑️ Delete Selected</button>
 
   <script>
     async function sendMessage() {
@@ -153,12 +149,9 @@
           const div = document.createElement("div");
           div.className = "file-card";
           div.innerHTML = `
-            <input type="checkbox" class="file-check" value="${file.name}" />
-            <div class="file-info">
-              📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
-              <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
-            </div>
-            <button class="delete-btn" onclick="deleteFile('${file.name}')">🗑️</button>
+            <input type="checkbox" class="checkbox" value="${file.name}" />
+            📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
+            <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
           `;
           fileList.appendChild(div);
         });
@@ -167,43 +160,28 @@
       }
     }
 
-    async function deleteFile(filename) {
-      const confirmDelete = confirm(`❓ Are you sure you want to delete "${filename}"?`);
-      if (!confirmDelete) return;
-
-      try {
-        const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
-          method: "DELETE"
-        });
-        const result = await res.json();
-        alert(result.message || "✅ File deleted.");
-        listFiles();
-      } catch (err) {
-        alert("❌ Delete failed: " + err.message);
-      }
-    }
-
-    async function sendSelectedToTelegram() {
-      const selected = Array.from(document.querySelectorAll(".file-check:checked")).map(input => input.value);
-      if (!selected.length) {
-        alert("❗ No file selected.");
+    async function deleteSelected() {
+      const checkboxes = document.querySelectorAll(".checkbox:checked");
+      if (checkboxes.length === 0) {
+        alert("❗ No files selected.");
         return;
       }
 
-      const confirmSend = confirm(`📤 Send ${selected.length} file(s) to Telegram?`);
-      if (!confirmSend) return;
+      if (!confirm("Are you sure you want to delete the selected files?")) return;
 
-      for (const filename of selected) {
+      for (const checkbox of checkboxes) {
+        const filename = checkbox.value;
         try {
-          const res = await fetch(`https://solacebot.onrender.com/send-file-to-telegram/${filename}`);
+          const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
+            method: "DELETE"
+          });
           const result = await res.json();
-          console.log("Telegram send:", result.message);
+          console.log(result.message || "✅ Deleted " + filename);
         } catch (err) {
-          alert(`❌ Failed to send ${filename}: ` + err.message);
+          alert("❌ Delete failed for " + filename + ": " + err.message);
         }
       }
-
-      alert("✅ Files sent to Telegram.");
+      listFiles();
     }
 
     fetchLatest();
