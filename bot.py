@@ -120,7 +120,8 @@ def send_file_to_telegram():
 
     with open(file_path, 'rb') as f:
         files = {'document': (filename, f)}  # ✅ Fix: filename included here
-        response = requests.post(f"{TELEGRAM_API_URL}/sendDocument?chat_id={CHAT_ID}", files=files)
+        response = requests.post(f"{TELEGRAM_API_URL}/sendDocument", data={"chat_id": CHAT_ID}, files=files)
+
 
     if response.status_code == 200:
         return jsonify({"message": f"✅ Sent {filename} to Telegram"}), 200
