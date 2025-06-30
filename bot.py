@@ -119,15 +119,17 @@ def send_file_to_telegram():
         if response.status_code == 200:
             return jsonify({"message": f"✅ Sent {filename} to Telegram"}), 200
         else:
-            return jsonify({"message": f"❌ Failed to send {filename}", "details": response.text}), 500
-        except Exception as e:
+            return jsonify({
+                "message": f"❌ Failed to send {filename}",
+                "details": response.text
+            }), 500
+    except Exception as e:
         import traceback
         return jsonify({
             "message": "❌ Internal Server Error",
             "error": str(e),
             "trace": traceback.format_exc()
         }), 500
-
 
 
 if __name__ == '__main__':
