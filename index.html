@@ -1,192 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Solace Portal</title>
-  <style>
-    body {
-      background-color: #0a0a0a;
-      color: #f0f0f0;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 80px;
+async function sendSelectedToTelegram() {
+  const checkboxes = document.querySelectorAll(".checkbox:checked");
+  if (checkboxes.length === 0) {
+    alert("❗ No files selected.");
+    return;
+  }
+
+  for (const checkbox of checkboxes) {
+    const filename = checkbox.value;
+    try {
+      const res = await fetch("https://solacebot.onrender.com/send-file-to-telegram", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ filename })
+      });
+      const result = await res.json();
+      alert(result.message || `✅ Sent ${filename} to Telegram`);
+    } catch (err) {
+      alert("❌ Failed to send " + filename + ": " + err.message);
     }
-    textarea, button, input[type="file"] {
-      padding: 12px;
-      font-size: 16px;
-      margin: 10px;
-      width: 90%;
-      max-width: 600px;
-      resize: vertical;
-      background-color: #1a1a1a;
-      color: #ffffff;
-      border: 1px solid #333;
-      border-radius: 6px;
-    }
-    button {
-      background-color: #64ffda;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #latest {
-      margin-top: 30px;
-      color: #64ffda;
-      font-size: 18px;
-    }
-    .file-card {
-      background: #1a1a1a;
-      border: 1px solid #444;
-      padding: 10px;
-      margin: 10px auto;
-      width: 90%;
-      max-width: 600px;
-      border-radius: 6px;
-      text-align: left;
-    }
-    .file-card a {
-      color: #64ffda;
-      margin-left: 8px;
-    }
-    .delete-btn {
-      background-color: #ff4d4d;
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .checkbox {
-      margin-right: 10px;
-    }
-  </style>
-</head>
-<body>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
-  <h1>Welcome to the Solace Portal</h1>
-  <p>This is your private node to communicate with Solace.</p>
-  
-  <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
-  <button onclick="sendMessage()">Send</button>
-  <button onclick="createAndSendFile()">📄 Send File to Me</button>
-
-  <br>
-  <input type="file" id="fileInput" />
-  <button onclick="uploadFile()">📤 Upload File</button>
-
-  <div id="latest">🔄 Loading...</div>
-  <h2>📁 Uploaded Files</h2>
-  <div id="fileList">Loading files...</div>
-  <button class="delete-btn" onclick="deleteSelected()">🗑️ Delete Selected</button>
-
-  <script>
-    async function sendMessage() {
-      const input = document.getElementById("messageInput").value;
-      const response = await fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(input)}`);
-      const result = await response.json();
-      console.log("Sent:", result);
-    }
-
-    async function fetchLatest() {
-      try {
-        const res = await fetch("/.netlify/functions/getlatestmessage");
-        const data = await res.json();
-        document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
-      } catch {
-        document.getElementById("latest").innerText = "⚠️ Error loading message";
-      }
-    }
-
-    async function createAndSendFile() {
-      try {
-        const response = await fetch("/.netlify/functions/sendfile");
-        const result = await response.text();
-        alert(result);
-      } catch (err) {
-        alert("❌ Failed to send file: " + err.message);
-      }
-    }
-
-    async function uploadFile() {
-      const input = document.getElementById("fileInput");
-      const file = input.files[0];
-      if (!file) {
-        alert("❗ Please select a file to upload.");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      try {
-        const res = await fetch("https://solacebot.onrender.com/upload-file", {
-          method: "POST",
-          body: formData
-        });
-        const result = await res.json();
-        alert(result.message || "✅ File uploaded.");
-        listFiles();
-      } catch (err) {
-        alert("❌ Upload failed: " + err.message);
-      }
-    }
-
-    async function listFiles() {
-      const fileList = document.getElementById("fileList");
-      fileList.innerHTML = "🔄 Loading...";
-
-      try {
-        const res = await fetch("https://solacebot.onrender.com/list-files");
-        const data = await res.json();
-        if (!data.files.length) {
-          fileList.innerHTML = "❌ No files found.";
-          return;
-        }
-
-        fileList.innerHTML = "";
-        data.files.forEach(file => {
-          const div = document.createElement("div");
-          div.className = "file-card";
-          div.innerHTML = `
-            <input type="checkbox" class="checkbox" value="${file.name}" />
-            📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
-            <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
-          `;
-          fileList.appendChild(div);
-        });
-      } catch (err) {
-        fileList.innerHTML = "❌ Failed to load file list.";
-      }
-    }
-
-    async function deleteSelected() {
-      const checkboxes = document.querySelectorAll(".checkbox:checked");
-      if (checkboxes.length === 0) {
-        alert("❗ No files selected.");
-        return;
-      }
-
-      if (!confirm("Are you sure you want to delete the selected files?")) return;
-
-      for (const checkbox of checkboxes) {
-        const filename = checkbox.value;
-        try {
-          const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
-            method: "DELETE"
-          });
-          const result = await res.json();
-          console.log(result.message || "✅ Deleted " + filename);
-        } catch (err) {
-          alert("❌ Delete failed for " + filename + ": " + err.message);
-        }
-      }
-      listFiles();
-    }
-
-    fetchLatest();
-    setInterval(fetchLatest, 15000);
-    listFiles();
-  </script>
-</body>
-</html>
+  }
+}
