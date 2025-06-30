@@ -8,7 +8,7 @@ app = Flask(__name__)
 CORS(app)
 
 BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
-CHAT_ID = "589089595"
+CHAT_ID = "253893212"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 UPLOAD_FOLDER = "uploads"
 LOG_FILE = "conversation_log.txt"
