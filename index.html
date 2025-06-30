@@ -203,7 +203,11 @@
             body: JSON.stringify({ filename })
           });
           const result = await res.json();
-          alert(result.message || `✅ Sent ${filename} to Telegram`);
+          if (result.message.startsWith("✅")) {
+            alert(result.message);
+          } else {
+            alert(`${result.message}\n${result.details || result.error || "No extra details"}`);
+          }
         } catch (err) {
           alert("❌ Failed to send " + filename + ": " + err.message);
         }
