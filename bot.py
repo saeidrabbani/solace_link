@@ -119,14 +119,25 @@ def send_file_to_telegram():
         return jsonify({"message": "❌ File not found."}), 404
 
     with open(file_path, 'rb') as f:
-        files = {'document': (filename, f)}  # ✅ Fix: filename included here
-        response = requests.post(f"{TELEGRAM_API_URL}/sendDocument", data={"chat_id": CHAT_ID}, files=files)
+        files = {'document': f}
+        response = requests.post(
+            f"{TELEGRAM_API_URL}/sendDocument",
+            data={"chat_id": CHAT_ID},
+            files=files
+        )
 
+    try:
+        response_data = response.json()
+    except:
+        response_data = {"error": "No JSON in response"}
 
-    if response.status_code == 200:
+    if response.status_code == 200 and response_data.get("ok"):
         return jsonify({"message": f"✅ Sent {filename} to Telegram"}), 200
     else:
-        return jsonify({"message": f"❌ Failed to send {filename}"}), 500
+        return jsonify({
+            "message": f"❌ Failed to send {filename}",
+            "details": response_data
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
