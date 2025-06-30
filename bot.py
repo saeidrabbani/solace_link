@@ -8,7 +8,7 @@ CORS(app)
 
 BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
-TELEGRAM_CHAT_ID = "7816762363"
+CHAT_ID = "6213502749"  # ← ID Telegram to receive files
 LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -24,34 +24,25 @@ def webhook():
         message = data['message']
         chat_id = message['chat']['id']
 
-        # Handle text messages
         if 'text' in message:
             text = message['text']
             with open(LOG_FILE, "a", encoding="utf-8") as file:
                 file.write(text + "\n")
-
-            reply = f"🌟 Received: {text}"
             requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
                 "chat_id": chat_id,
-                "text": reply
+                "text": f"🌟 Received: {text}"
             })
 
-        # Handle file attachments (document)
         elif 'document' in message:
             file_id = message['document']['file_id']
             file_name = message['document']['file_name']
-
-            # Get file path from Telegram
             file_info_res = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={file_id}").json()
             if 'result' in file_info_res:
                 file_path = file_info_res['result']['file_path']
                 file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
-
-                # Download and save
                 file_data = requests.get(file_url)
                 with open(os.path.join(UPLOAD_FOLDER, file_name), 'wb') as f:
                     f.write(file_data.content)
-
                 requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
                     "chat_id": chat_id,
                     "text": f"✅ File saved to Solace Portal: {file_name}"
@@ -61,31 +52,26 @@ def webhook():
                     "chat_id": chat_id,
                     "text": "❌ Could not retrieve file info."
                 })
-
     return '', 200
 
 @app.route('/latest-message', methods=['GET'])
 def get_latest_message():
     if not os.path.exists(LOG_FILE):
         return jsonify({"message": ""})
-    
     with open(LOG_FILE, "r", encoding="utf-8") as file:
         lines = file.readlines()
         if lines:
             return jsonify({"message": lines[-1].strip()})
-    
     return jsonify({"message": ""})
 
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
         return jsonify({"message": "❌ No file uploaded."}), 400
-
     file = request.files['file']
     filename = file.filename
     save_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(save_path)
-
     return jsonify({"message": f"✅ File uploaded: {filename}"}), 200
 
 @app.route('/list-files', methods=['GET'])
@@ -109,23 +95,22 @@ def delete_file(filename):
         return jsonify({"message": f"🗑️ Deleted: {filename}"}), 200
     return jsonify({"message": "❌ File not found."}), 404
 
-@app.route("/send-uploaded-file/<filename>")
-def send_uploaded_file(filename):
+@app.route('/send-file-to-telegram/<filename>', methods=['GET'])
+def send_file_to_telegram(filename):
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(file_path):
+        return jsonify({"message": "❌ File not found."}), 404
     try:
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        if not os.path.isfile(file_path):
-            return "File not found", 404
-
-        with open(file_path, "rb") as f:
-            requests.post(
-                f"{TELEGRAM_API_URL}/sendDocument",
-                data={"chat_id": TELEGRAM_CHAT_ID},
-                files={"document": (filename, f)}
-            )
-
-        return f"✅ File '{filename}' sent to Telegram."
+        with open(file_path, 'rb') as f:
+            files = {'document': (filename, f)}
+            data = {'chat_id': CHAT_ID}
+            res = requests.post(f"{TELEGRAM_API_URL}/sendDocument", data=data, files=files)
+        if res.status_code == 200:
+            return jsonify({"message": f"📤 Sent {filename} to Telegram."})
+        else:
+            return jsonify({"message": f"❌ Telegram error: {res.text}"}), 500
     except Exception as e:
-        return f"❌ Failed to send file: {str(e)}", 500
+        return jsonify({"message": f"❌ Error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
