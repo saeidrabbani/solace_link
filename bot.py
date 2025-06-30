@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import os
+import traceback
 
 app = Flask(__name__)
 CORS(app)
@@ -100,22 +101,29 @@ def delete_file(filename):
 
 @app.route('/send-file-to-telegram', methods=['POST'])
 def send_file_to_telegram():
-    data = request.get_json()
-    filename = data.get("filename")
-    if not filename:
-        return jsonify({"message": "❌ No filename provided."}), 400
-
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(file_path):
-        return jsonify({"message": "❌ File not found."}), 404
-
     try:
+        data = request.get_json()
+        print("📩 Received send request:", data)
+
+        filename = data.get("filename")
+        if not filename:
+            return jsonify({"message": "❌ No filename provided."}), 400
+
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        print("📁 File path to send:", file_path)
+
+        if not os.path.exists(file_path):
+            return jsonify({"message": "❌ File not found."}), 404
+
         with open(file_path, 'rb') as f:
             response = requests.post(
                 f"{TELEGRAM_API_URL}/sendDocument",
                 data={"chat_id": CHAT_ID},
                 files={"document": f}
             )
+
+        print("📤 Telegram Response:", response.status_code, response.text)
+
         if response.status_code == 200:
             return jsonify({"message": f"✅ Sent {filename} to Telegram"}), 200
         else:
@@ -123,8 +131,10 @@ def send_file_to_telegram():
                 "message": f"❌ Failed to send {filename}",
                 "details": response.text
             }), 500
+
     except Exception as e:
-        import traceback
+        print("🔥 Exception occurred:", str(e))
+        print(traceback.format_exc())
         return jsonify({
             "message": "❌ Internal Server Error",
             "error": str(e),
