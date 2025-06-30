@@ -10,7 +10,7 @@ BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 LOG_FILE = "conversation_log.txt"
 UPLOAD_FOLDER = "uploads"
-CHAT_ID = "589089595"  # Saeid's Telegram chat ID
+CHAT_ID = "589089595"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/')
@@ -119,7 +119,7 @@ def send_file_to_telegram():
         return jsonify({"message": "❌ File not found."}), 404
 
     with open(file_path, 'rb') as f:
-        files = {'document': f}
+        files = {'document': (filename, f)}  # ✅ Fix: filename included here
         response = requests.post(f"{TELEGRAM_API_URL}/sendDocument?chat_id={CHAT_ID}", files=files)
 
     if response.status_code == 200:
