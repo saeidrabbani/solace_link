@@ -3,6 +3,24 @@ from flask_cors import CORS
 import requests
 import os
 import traceback
+import sqlite3
+
+DB_PATH = "conversation.db"
+
+# Create messages table if it doesn't exist
+conn = sqlite3.connect(DB_PATH)
+c = conn.cursor()
+c.execute('''
+    CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        direction TEXT,
+        content TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+''')
+conn.commit()
+conn.close()
+
 
 app = Flask(__name__)
 CORS(app)
