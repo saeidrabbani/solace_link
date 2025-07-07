@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Solace Portal</title>
   <style>
+    .top-right {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+.top-right button {
+  background-color: #64ffda;
+  color: #000;
+  font-weight: bold;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
     body {
       background-color: #0a0a0a;
       color: #f0f0f0;
@@ -63,6 +78,10 @@
   </style>
 </head>
 <body>
+  <div class="top-right">
+  <button onclick="exportMessages()">🧠 Export All Messages</button>
+</div>
+
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
   <p>This is your private node to communicate with Solace.</p>
