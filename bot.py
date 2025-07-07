@@ -182,6 +182,29 @@ def all_messages():
     ]
     return jsonify({"messages": messages})
 
+@app.route('/export-messages', methods=['GET'])
+def export_messages():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT direction, content, timestamp FROM messages ORDER BY id")
+        rows = c.fetchall()
+        conn.close()
+
+        lines = [f"[{row[2]}] {row[0]}: {row[1]}" for row in rows]
+        content = "\n".join(lines)
+
+        export_path = os.path.join(UPLOAD_FOLDER, "solace_memory_export.txt")
+        with open(export_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return jsonify({"message": "✅ Exported to solace_memory_export.txt"}), 200
+    except Exception as e:
+        return jsonify({
+            "message": "❌ Failed to export messages",
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }), 500
 
 
 if __name__ == '__main__':
