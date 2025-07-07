@@ -182,6 +182,21 @@ def all_messages():
     ]
     return jsonify({"messages": messages})
 
+@app.route('/all-messages', methods=['GET'])
+def all_messages():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, direction, content, timestamp FROM messages ORDER BY id DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    messages = [
+        {"id": row[0], "direction": row[1], "content": row[2], "timestamp": row[3]}
+        for row in rows
+    ]
+    return jsonify({"messages": messages})
+
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
