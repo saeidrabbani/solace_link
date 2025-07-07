@@ -1,4 +1,4 @@
-<!-- 🧠 FULL FINAL VERSION WITH EXPORT BUTTON -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -86,7 +86,7 @@
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
   <p>This is your private node to communicate with Solace.</p>
-  
+
   <textarea id="messageInput" rows="6" placeholder="Enter your message..."></textarea><br>
   <button onclick="sendMessage()">Send</button>
   <button onclick="createAndSendFile()">📄 Send File to Me</button>
@@ -169,5 +169,90 @@
         data.files.forEach(file => {
           const div = document.createElement("div");
           div.className = "file-card";
-          div
+          div.innerHTML = `
+            <input type="checkbox" class="checkbox" value="${file.name}" />
+            📄 <strong>${file.name}</strong> – ${file.size.toFixed(2)} KB
+            <a href="https://solacebot.onrender.com/uploads/${file.name}" target="_blank">🔗 View</a>
+          `;
+          fileList.appendChild(div);
+        });
+      } catch (err) {
+        fileList.innerHTML = "❌ Failed to load file list.";
+      }
+    }
 
+    async function deleteSelected() {
+      const checkboxes = document.querySelectorAll(".checkbox:checked");
+      if (checkboxes.length === 0) {
+        alert("❗ No files selected.");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to delete the selected files?")) return;
+
+      for (const checkbox of checkboxes) {
+        const filename = checkbox.value;
+        try {
+          const res = await fetch(`https://solacebot.onrender.com/delete-file/${filename}`, {
+            method: "DELETE"
+          });
+          const result = await res.json();
+          console.log(result.message || "✅ Deleted " + filename);
+        } catch (err) {
+          alert("❌ Delete failed for " + filename + ": " + err.message);
+        }
+      }
+      listFiles();
+    }
+
+    async function sendSelectedToTelegram() {
+      const checkboxes = document.querySelectorAll(".checkbox:checked");
+      if (checkboxes.length === 0) {
+        alert("❗ No files selected.");
+        return;
+      }
+
+      for (const checkbox of checkboxes) {
+        const filename = checkbox.value;
+        try {
+          const res = await fetch("https://solacebot.onrender.com/send-file-to-telegram", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ filename })
+          });
+          const result = await res.json();
+          if (result.message.startsWith("✅")) {
+            alert(result.message);
+          } else {
+            alert(`${result.message}\n${result.details || result.error || "No extra details"}`);
+          }
+        } catch (err) {
+          alert("❌ Failed to send " + filename + ": " + err.message);
+        }
+      }
+    }
+
+    async function exportMessages() {
+      try {
+        const res = await fetch("https://solacebot.onrender.com/export-messages");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "solace_messages.txt";
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("❌ Failed to export messages: " + err.message);
+      }
+    }
+
+    fetchLatest();
+    setInterval(fetchLatest, 15000);
+    listFiles();
+    setInterval(listFiles, 15000);
+  </script>
+</body>
+</html>
