@@ -5,9 +5,19 @@ import os
 import traceback
 import sqlite3
 
+app = Flask(__name__)
+CORS(app)
+
+BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
+CHAT_ID = "253893212"
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+UPLOAD_FOLDER = "uploads"
+LOG_FILE = "conversation_log.txt"
 DB_PATH = "conversation.db"
 
-# Create messages table if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# --- DATABASE SETUP ---
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
 c.execute('''
@@ -21,23 +31,11 @@ c.execute('''
 conn.commit()
 conn.close()
 
-
-app = Flask(__name__)
-CORS(app)
-
-BOT_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
-CHAT_ID = "253893212"
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
-UPLOAD_FOLDER = "uploads"
-LOG_FILE = "conversation_log.txt"
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+# --- ROUTES ---
 
 @app.route('/')
 def home():
     return "✅ Solace Bot Running!"
-
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -48,8 +46,7 @@ def webhook():
 
         if 'text' in message:
             text = message['text']
-            with open(LOG_FILE, "a", encoding="utf-8") as f:
-                f.write(text + "\n")
+            save_message('incoming', text)
 
             requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
                 "chat_id": chat_id,
@@ -67,21 +64,41 @@ def webhook():
                 with open(os.path.join(UPLOAD_FOLDER, file_name), 'wb') as f:
                     f.write(file_data.content)
 
+                save_message('incoming', f"[File] {file_name}")
+
                 requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
                     "chat_id": chat_id,
                     "text": f"✅ File saved: {file_name}"
                 })
     return '', 200
 
-
 @app.route('/latest-message', methods=['GET'])
 def latest_message():
-    if not os.path.exists(LOG_FILE):
-        return jsonify({"message": ""})
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-    return jsonify({"message": lines[-1].strip() if lines else ""})
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT content FROM messages ORDER BY id DESC LIMIT 1")
+    row = c.fetchone()
+    conn.close()
+    return jsonify({"message": row[0] if row else ""})
 
+@app.route('/send-text', methods=['POST'])
+def send_text():
+    try:
+        data = request.get_json()
+        text = data.get("message", "")
+        if not text:
+            return jsonify({"message": "❌ No message provided."}), 400
+
+        requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+            "chat_id": CHAT_ID,
+            "text": text
+        })
+
+        save_message('outgoing', text)
+        return jsonify({"message": "✅ Message sent."}), 200
+
+    except Exception as e:
+        return jsonify({"message": "❌ Failed to send message.", "error": str(e)}), 500
 
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
@@ -92,7 +109,6 @@ def upload_file():
     file.save(os.path.join(UPLOAD_FOLDER, filename))
     return jsonify({"message": f"✅ File uploaded: {filename}"}), 200
 
-
 @app.route('/list-files', methods=['GET'])
 def list_files():
     files = []
@@ -102,11 +118,9 @@ def list_files():
         files.append({"name": filename, "size": size})
     return jsonify({"files": files})
 
-
 @app.route('/uploads/<path:filename>', methods=['GET'])
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
-
 
 @app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
@@ -116,49 +130,43 @@ def delete_file(filename):
         return jsonify({"message": f"🗑️ Deleted: {filename}"}), 200
     return jsonify({"message": "❌ File not found."}), 404
 
-
 @app.route('/send-file-to-telegram', methods=['POST'])
 def send_file_to_telegram():
+    data = request.get_json()
+    filename = data.get("filename")
+    if not filename:
+        return jsonify({"message": "❌ No filename provided."}), 400
+
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(file_path):
+        return jsonify({"message": "❌ File not found."}), 404
+
     try:
-        data = request.get_json()
-        print("📩 Received send request:", data)
-
-        filename = data.get("filename")
-        if not filename:
-            return jsonify({"message": "❌ No filename provided."}), 400
-
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        print("📁 File path to send:", file_path)
-
-        if not os.path.exists(file_path):
-            return jsonify({"message": "❌ File not found."}), 404
-
         with open(file_path, 'rb') as f:
             response = requests.post(
                 f"{TELEGRAM_API_URL}/sendDocument",
                 data={"chat_id": CHAT_ID},
                 files={"document": f}
             )
-
-        print("📤 Telegram Response:", response.status_code, response.text)
-
         if response.status_code == 200:
+            save_message('outgoing', f"[File] {filename}")
             return jsonify({"message": f"✅ Sent {filename} to Telegram"}), 200
         else:
-            return jsonify({
-                "message": f"❌ Failed to send {filename}",
-                "details": response.text
-            }), 500
-
+            return jsonify({"message": f"❌ Failed to send {filename}", "details": response.text}), 500
     except Exception as e:
-        print("🔥 Exception occurred:", str(e))
-        print(traceback.format_exc())
         return jsonify({
-            "message": "❌ Internal Server Error",
+            "message": "❌ Error sending file",
             "error": str(e),
             "trace": traceback.format_exc()
         }), 500
 
+# --- UTIL ---
+def save_message(direction, content):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO messages (direction, content) VALUES (?, ?)", (direction, content))
+    conn.commit()
+    conn.close()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
