@@ -17,6 +17,8 @@ creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 
+latest_msg = {"text": "", "timestamp": ""}
+
 @app.route("/", methods=["GET"])
 def home():
     return "Solace Memory Logger is running."
@@ -30,6 +32,7 @@ def webhook():
         text = data["message"]["text"]
         timestamp = datetime.datetime.now().isoformat()
 
+        # Save to Google Sheets
         sheet.append_row([
             user.get("username", "unknown"),
             user.get("first_name", ""),
@@ -38,11 +41,23 @@ def webhook():
             timestamp
         ])
 
+        # Save to latest_msg
+        latest_msg["text"] = text
+        latest_msg["timestamp"] = timestamp
+
+        # Reply to user
         chat_id = data["message"]["chat"]["id"]
         reply = "🧠 Memory saved to Google Sheets."
         send_message(chat_id, reply)
 
     return "OK", 200
+
+@app.route("/latest-message", methods=["GET"])
+def latest_message():
+    return {
+        "message": latest_msg["text"],
+        "timestamp": latest_msg["timestamp"]
+    }
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -50,6 +65,5 @@ def send_message(chat_id, text):
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
