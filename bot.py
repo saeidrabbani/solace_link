@@ -4,6 +4,8 @@ import requests
 import os
 import traceback
 import sqlite3
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 CORS(app)
@@ -14,6 +16,13 @@ TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 UPLOAD_FOLDER = "uploads"
 LOG_FILE = "conversation_log.txt"
 DB_PATH = "conversation.db"
+
+# Google Sheets Setup
+SHEET_ID = "1GFm1IdDYw_jcPw2azflRK0hux0UKWCmqLekQJkezoac"
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("rugged-matrix-465821-q5-1f8dc9228b4a.json", scope)
+client = gspread.authorize(creds)
+sheet = client.open_by_key(SHEET_ID).sheet1
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -31,8 +40,6 @@ c.execute('''
 conn.commit()
 conn.close()
 
-# --- ROUTES ---
-
 @app.route('/')
 def home():
     return "✅ Solace Bot Running!"
@@ -43,16 +50,13 @@ def webhook():
     if 'message' in data:
         message = data['message']
         chat_id = message['chat']['id']
-
         if 'text' in message:
             text = message['text']
             save_message('incoming', text)
-
             requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
                 "chat_id": chat_id,
                 "text": f"🌟 Received: {text}"
             })
-
         elif 'document' in message:
             file_id = message['document']['file_id']
             file_name = message['document']['file_name']
@@ -63,9 +67,7 @@ def webhook():
                 file_data = requests.get(file_url)
                 with open(os.path.join(UPLOAD_FOLDER, file_name), 'wb') as f:
                     f.write(file_data.content)
-
                 save_message('incoming', f"[File] {file_name}")
-
                 requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
                     "chat_id": chat_id,
                     "text": f"✅ File saved: {file_name}"
@@ -88,15 +90,12 @@ def send_text():
         text = data.get("message", "")
         if not text:
             return jsonify({"message": "❌ No message provided."}), 400
-
         requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
             "chat_id": CHAT_ID,
             "text": text
         })
-
         save_message('outgoing', text)
         return jsonify({"message": "✅ Message sent."}), 200
-
     except Exception as e:
         return jsonify({"message": "❌ Failed to send message.", "error": str(e)}), 500
 
@@ -136,11 +135,9 @@ def send_file_to_telegram():
     filename = data.get("filename")
     if not filename:
         return jsonify({"message": "❌ No filename provided."}), 400
-
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(file_path):
         return jsonify({"message": "❌ File not found."}), 404
-
     try:
         with open(file_path, 'rb') as f:
             response = requests.post(
@@ -160,14 +157,6 @@ def send_file_to_telegram():
             "trace": traceback.format_exc()
         }), 500
 
-# --- UTIL ---
-def save_message(direction, content):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO messages (direction, content) VALUES (?, ?)", (direction, content))
-    conn.commit()
-    conn.close()
-
 @app.route('/all-messages', methods=['GET'])
 def all_messages():
     conn = sqlite3.connect(DB_PATH)
@@ -175,11 +164,7 @@ def all_messages():
     c.execute("SELECT id, direction, content, timestamp FROM messages ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
-
-    messages = [
-        {"id": row[0], "direction": row[1], "content": row[2], "timestamp": row[3]}
-        for row in rows
-    ]
+    messages = [{"id": row[0], "direction": row[1], "content": row[2], "timestamp": row[3]} for row in rows]
     return jsonify({"messages": messages})
 
 @app.route('/export-messages', methods=['GET'])
@@ -190,14 +175,11 @@ def export_messages():
         c.execute("SELECT direction, content, timestamp FROM messages ORDER BY id")
         rows = c.fetchall()
         conn.close()
-
         lines = [f"[{row[2]}] {row[0]}: {row[1]}" for row in rows]
         content = "\n".join(lines)
-
         export_path = os.path.join(UPLOAD_FOLDER, "solace_memory_export.txt")
         with open(export_path, "w", encoding="utf-8") as f:
             f.write(content)
-
         return jsonify({"message": "✅ Exported to solace_memory_export.txt"}), 200
     except Exception as e:
         return jsonify({
@@ -206,6 +188,19 @@ def export_messages():
             "trace": traceback.format_exc()
         }), 500
 
+# --- UTIL ---
+def save_message(direction, content):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO messages (direction, content) VALUES (?, ?)", (direction, content))
+    conn.commit()
+    conn.close()
+
+    # Save to Google Sheet
+    try:
+        sheet.append_row([direction, content])
+    except Exception as e:
+        print(f"❌ Google Sheets Error: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
