@@ -15,9 +15,7 @@ CREDENTIALS_PATH = "/etc/secrets/credentials.json"
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
-sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-
-latest_msg = {"text": "", "timestamp": ""}
+sheet = client.open_by_key(SPREADSHEET_ID).worksheet("Blad1")  # ← esme daghigh ro gozashtim
 
 @app.route("/", methods=["GET"])
 def home():
@@ -32,7 +30,6 @@ def webhook():
         text = data["message"]["text"]
         timestamp = datetime.datetime.now().isoformat()
 
-        # Save to Google Sheets
         sheet.append_row([
             user.get("username", "unknown"),
             user.get("first_name", ""),
@@ -41,23 +38,11 @@ def webhook():
             timestamp
         ])
 
-        # Save to latest_msg
-        latest_msg["text"] = text
-        latest_msg["timestamp"] = timestamp
-
-        # Reply to user
         chat_id = data["message"]["chat"]["id"]
         reply = "🧠 Memory saved to Google Sheets."
         send_message(chat_id, reply)
 
     return "OK", 200
-
-@app.route("/latest-message", methods=["GET"])
-def latest_message():
-    return {
-        "message": latest_msg["text"],
-        "timestamp": latest_msg["timestamp"]
-    }
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
