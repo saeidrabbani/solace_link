@@ -8,12 +8,13 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 
+# Environment Variables
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 SPREADSHEET_ID = "1GFm1IdDYw_jcPw2azflRK0hux0UKWCmqLekQJkezoac"
 CREDENTIALS_PATH = "/etc/secrets/credentials.json"
 
-# Setup Google Sheets
+# Google Sheets Setup
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
@@ -43,8 +44,7 @@ def webhook():
 
         # Reply to Telegram
         chat_id = data["message"]["chat"]["id"]
-        reply = "🧠 Memory saved to Google Sheets."
-        send_message(chat_id, reply)
+        send_message(chat_id, "🧠 Memory saved to Google Sheets.")
 
     return "OK", 200
 
@@ -74,14 +74,20 @@ def latest_message():
         if len(all_records) < 2:
             return jsonify({"message": "", "timestamp": ""})
         last_row = all_records[-1]
-        return jsonify({"message": last_row[3], "timestamp": last_row[4]})
+        return jsonify({
+            "message": last_row[3] if len(last_row) > 3 else "",
+            "timestamp": last_row[4] if len(last_row) > 4 else ""
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
-    requests.post(url, json=payload)
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print("Error sending message:", str(e))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
