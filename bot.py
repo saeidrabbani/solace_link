@@ -87,5 +87,5 @@ def send_message(chat_id, text):
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
