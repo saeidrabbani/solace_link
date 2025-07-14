@@ -2,23 +2,22 @@ import os
 import json
 import datetime
 import requests
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 SPREADSHEET_ID = "1GFm1IdDYw_jcPw2azflRK0hux0UKWCmqLekQJkezoac"
 CREDENTIALS_PATH = "/etc/secrets/credentials.json"
-OWNER_CHAT_ID = 253893212
 
+# Setup Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-
-latest_message = {"message": "", "timestamp": ""}
 
 @app.route("/", methods=["GET"])
 def home():
@@ -33,6 +32,7 @@ def webhook():
         text = data["message"]["text"]
         timestamp = datetime.datetime.now().isoformat()
 
+        # Save to Google Sheets
         sheet.append_row([
             user.get("username", "unknown"),
             user.get("first_name", ""),
@@ -41,41 +41,42 @@ def webhook():
             timestamp
         ])
 
-        global latest_message
-        latest_message = {"message": text, "timestamp": timestamp}
-
+        # Reply to Telegram
         chat_id = data["message"]["chat"]["id"]
         reply = "🧠 Memory saved to Google Sheets."
         send_message(chat_id, reply)
 
     return "OK", 200
 
-@app.route("/send-message", methods=["POST"])
+@app.route("/send-from-site", methods=["POST"])
 def send_from_site():
     data = request.get_json()
-    text = data.get("message", "")
+    message = data.get("message", "")
+
+    if not message:
+        return jsonify({"error": "No message provided"}), 400
+
+    # Send to Telegram
+    send_message(OWNER_CHAT_ID, message)
+
+    # Save to Google Sheets
     timestamp = datetime.datetime.now().isoformat()
+    sheet.append_row([
+        "solace_portal", "", "", message, timestamp
+    ])
 
-    if text.strip():
-        send_message(OWNER_CHAT_ID, text)
-
-        sheet.append_row([
-            "from_site",
-            "Solace",
-            "Portal",
-            text,
-            timestamp
-        ])
-
-        global latest_message
-        latest_message = {"message": text, "timestamp": timestamp}
-
-        return {"status": "Message sent and saved."}, 200
-    return {"error": "Empty message."}, 400
+    return jsonify({"status": "sent and saved"}), 200
 
 @app.route("/latest-message", methods=["GET"])
-def get_latest():
-    return latest_message
+def latest_message():
+    try:
+        all_records = sheet.get_all_values()
+        if len(all_records) < 2:
+            return jsonify({"message": "", "timestamp": ""})
+        last_row = all_records[-1]
+        return jsonify({"message": last_row[3], "timestamp": last_row[4]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
