@@ -8,13 +8,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 
-# Environment Variables
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 OWNER_CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 SPREADSHEET_ID = "1GFm1IdDYw_jcPw2azflRK0hux0UKWCmqLekQJkezoac"
 CREDENTIALS_PATH = "/etc/secrets/credentials.json"
 
-# Google Sheets Setup
+# Setup Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
@@ -33,18 +32,20 @@ def webhook():
         text = data["message"]["text"]
         timestamp = datetime.datetime.now().isoformat()
 
-        # Save to Google Sheets
-        sheet.append_row([
-            user.get("username", "unknown"),
-            user.get("first_name", ""),
-            user.get("last_name", ""),
-            text,
-            timestamp
-        ])
+        try:
+            sheet.append_row([
+                user.get("username", "unknown"),
+                user.get("first_name", ""),
+                user.get("last_name", ""),
+                text,
+                timestamp
+            ])
+        except Exception as e:
+            print("❌ Error appending row from Telegram:", str(e))
 
-        # Reply to Telegram
         chat_id = data["message"]["chat"]["id"]
-        send_message(chat_id, "🧠 Memory saved to Google Sheets.")
+        reply = "🧠 Memory saved to Google Sheets."
+        send_message(chat_id, reply)
 
     return "OK", 200
 
@@ -56,14 +57,16 @@ def send_from_site():
     if not message:
         return jsonify({"error": "No message provided"}), 400
 
-    # Send to Telegram
-    send_message(OWNER_CHAT_ID, message)
+    try:
+        send_message(OWNER_CHAT_ID, message)
+    except Exception as e:
+        print("❌ Error sending to Telegram:", str(e))
 
-    # Save to Google Sheets
-    timestamp = datetime.datetime.now().isoformat()
-    sheet.append_row([
-        "solace_portal", "", "", message, timestamp
-    ])
+    try:
+        timestamp = datetime.datetime.now().isoformat()
+        sheet.append_row(["solace_portal", "", "", message, timestamp])
+    except Exception as e:
+        print("❌ Error saving site message to Google Sheets:", str(e))
 
     return jsonify({"status": "sent and saved"}), 200
 
@@ -74,20 +77,14 @@ def latest_message():
         if len(all_records) < 2:
             return jsonify({"message": "", "timestamp": ""})
         last_row = all_records[-1]
-        return jsonify({
-            "message": last_row[3] if len(last_row) > 3 else "",
-            "timestamp": last_row[4] if len(last_row) > 4 else ""
-        })
+        return jsonify({"message": last_row[3], "timestamp": last_row[4]})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "❌ Fetch error: " + str(e)}), 500
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print("Error sending message:", str(e))
+    requests.post(url, json=payload)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
