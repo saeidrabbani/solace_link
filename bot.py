@@ -40,12 +40,12 @@ def webhook():
                 text,
                 timestamp
             ])
+            print("✅ Telegram → Sheet saved successfully.")
         except Exception as e:
-            print("❌ Error appending row from Telegram:", str(e))
+            print("❌ Error saving Telegram message to Sheet:", str(e))
 
         chat_id = data["message"]["chat"]["id"]
-        reply = "🧠 Memory saved to Google Sheets."
-        send_message(chat_id, reply)
+        send_message(chat_id, "🧠 Memory saved to Google Sheets.")
 
     return "OK", 200
 
@@ -57,16 +57,19 @@ def send_from_site():
     if not message:
         return jsonify({"error": "No message provided"}), 400
 
-    try:
-        send_message(OWNER_CHAT_ID, message)
-    except Exception as e:
-        print("❌ Error sending to Telegram:", str(e))
+    # Send to Telegram
+    send_message(OWNER_CHAT_ID, message)
+    print("📤 Message sent to Telegram:", message)
 
+    # Save to Google Sheets
     try:
         timestamp = datetime.datetime.now().isoformat()
-        sheet.append_row(["solace_portal", "", "", message, timestamp])
+        sheet.append_row([
+            "solace_portal", "", "", message, timestamp
+        ])
+        print("✅ Site → Sheet saved successfully.")
     except Exception as e:
-        print("❌ Error saving site message to Google Sheets:", str(e))
+        print("❌ Error saving Site message to Sheet:", str(e))
 
     return jsonify({"status": "sent and saved"}), 200
 
@@ -84,8 +87,12 @@ def latest_message():
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
-    requests.post(url, json=payload)
+    try:
+        response = requests.post(url, json=payload)
+        print("📤 Telegram response:", response.text)
+    except Exception as e:
+        print("❌ Error sending message to Telegram:", str(e))
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
