@@ -54,10 +54,28 @@ def send_message():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
+
+    # Handle text message
     msg = data.get("message", {}).get("text")
     if msg:
         save_message("from_telegram", msg)
+
+    # Handle document upload
+    doc = data.get("message", {}).get("document")
+    if doc:
+        file_id = doc["file_id"]
+        file_name = doc["file_name"]
+        file_url_resp = requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getFile?file_id={file_id}")
+        file_path = file_url_resp.json()["result"]["file_path"]
+        file_data = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}")
+
+        # Save file
+        save_path = os.path.join(app.config["UPLOAD_FOLDER"], file_name)
+        with open(save_path, "wb") as f:
+            f.write(file_data.content)
+
     return jsonify({"status": "received"}), 200
+
 
 @app.route("/latest-message", methods=["GET"])
 def latest_message():
