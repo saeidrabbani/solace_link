@@ -35,7 +35,6 @@ def webhook():
         text = data["message"]["text"]
         timestamp = datetime.datetime.now().isoformat()
 
-        # Save to Google Sheets (vertical row)
         try:
             sheet.append_row([
                 user.get("username", "unknown"),
@@ -54,18 +53,17 @@ def webhook():
     return "OK", 200
 
 @app.route("/send-from-site", methods=["POST"])
-def send_from_site():
+@app.route("/save-message", methods=["POST"])  # ✅ new route added
+def save_message():
     data = request.get_json()
     message = data.get("message", "")
 
     if not message:
         return jsonify({"error": "No message provided"}), 400
 
-    # Send to Telegram
     send_message(OWNER_CHAT_ID, message)
     print("📤 Message sent to Telegram:", message)
 
-    # Save to Google Sheets (vertical row)
     try:
         timestamp = datetime.datetime.now().isoformat()
         sheet.append_row([
