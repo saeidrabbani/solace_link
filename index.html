@@ -107,15 +107,16 @@
       console.log("Sent:", result);
     }
 
-    async function fetchLatest() {
-      try {
-        const res = await fetch("https://solacebot.onrender.com/latest-message");
-        const data = await res.json();
-        document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
-      } catch {
-        document.getElementById("latest").innerText = "⚠️ Error loading message";
-      }
-    }
+async function fetchLatest() {
+  try {
+    const res = await fetch("https://solacebot.onrender.com/latest-message");
+    const data = await res.json();
+    document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
+  } catch {
+    document.getElementById("latest").innerText = "⚠️ Error loading message";
+  }
+}
+
 
     async function uploadFile() {
       const input = document.getElementById("fileInput");
