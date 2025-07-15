@@ -109,7 +109,7 @@
 
     async function fetchLatest() {
       try {
-        const res = await fetch("/.netlify/functions/getlatestmessage");
+        const res = await fetch("https://solacebot.onrender.com/latest-message");
         const data = await res.json();
         document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
       } catch {
