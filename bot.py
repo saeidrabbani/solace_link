@@ -8,6 +8,7 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# Save to Google Sheets
 def save_to_sheet(direction, message):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -18,8 +19,6 @@ def save_to_sheet(direction, message):
     except Exception as e:
         print("❌ Sheet Error:", e)
 
-
-
 app = Flask(__name__)
 CORS(app)
 
@@ -27,13 +26,13 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Telegram
+# Telegram setup
 TELEGRAM_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
 CHAT_ID = "253893212"
 TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 TELEGRAM_FILE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument"
 
-# DB Setup
+# SQLite DB setup
 DB_FILE = "conversation.db"
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor = conn.cursor()
@@ -57,28 +56,23 @@ def send_message():
     if not msg:
         return jsonify({"error": "No message"}), 400
 
-    # Send to Telegram
     tg_response = requests.post(TELEGRAM_URL, json={"chat_id": CHAT_ID, "text": msg})
     if tg_response.status_code != 200:
         return jsonify({"error": "Failed to send to Telegram"}), 500
 
     save_message("to_telegram", msg)
     save_to_sheet("to_telegram", msg)
-
     return jsonify({"message": f"✅ Sent to Telegram: {msg}"}), 200
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
 
-    # Handle text message
     msg = data.get("message", {}).get("text")
     if msg:
         save_message("from_telegram", msg)
         save_to_sheet("from_telegram", msg)
 
-
-    # Handle document upload
     doc = data.get("message", {}).get("document")
     if doc:
         file_id = doc["file_id"]
@@ -87,13 +81,13 @@ def webhook():
         file_path = file_url_resp.json()["result"]["file_path"]
         file_data = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}")
 
-        # Save file
         save_path = os.path.join(app.config["UPLOAD_FOLDER"], file_name)
         with open(save_path, "wb") as f:
             f.write(file_data.content)
 
-    return jsonify({"status": "received"}), 200
+        save_to_sheet("file_from_telegram", file_name)
 
+    return jsonify({"status": "received"}), 200
 
 @app.route("/latest-message", methods=["GET"])
 def latest_message():
@@ -111,6 +105,8 @@ def upload_file():
         return jsonify({"error": "No filename"}), 400
     filename = secure_filename(file.filename)
     file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+    save_to_sheet("upload_from_site", filename)
     return jsonify({"message": f"✅ Uploaded {filename}"}), 200
 
 @app.route("/list-files", methods=["GET"])
@@ -159,6 +155,8 @@ def send_file_to_telegram():
             )
         if res.status_code != 200:
             return jsonify({"message": "❌ Failed to send file", "details": res.text}), 500
+
+        save_to_sheet("file_to_telegram", filename)
         return jsonify({"message": f"✅ Sent {filename} to Telegram"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
