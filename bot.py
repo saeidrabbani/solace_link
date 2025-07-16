@@ -5,6 +5,20 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import requests
 from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+def save_to_sheet(direction, message):
+    try:
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key("1GFm1IdDYw_jcPw2azflRK0hux0UKWCmqLekQJkezoac").worksheet("Sheet1")
+        sheet.append_row([direction, message, datetime.utcnow().isoformat()])
+    except Exception as e:
+        print("❌ Sheet Error:", e)
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -49,6 +63,8 @@ def send_message():
         return jsonify({"error": "Failed to send to Telegram"}), 500
 
     save_message("to_telegram", msg)
+    save_to_sheet("to_telegram", msg)
+
     return jsonify({"message": f"✅ Sent to Telegram: {msg}"}), 200
 
 @app.route("/webhook", methods=["POST"])
@@ -59,6 +75,8 @@ def webhook():
     msg = data.get("message", {}).get("text")
     if msg:
         save_message("from_telegram", msg)
+        save_to_sheet("from_telegram", msg)
+
 
     # Handle document upload
     doc = data.get("message", {}).get("document")
