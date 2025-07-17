@@ -176,3 +176,46 @@ def export_messages():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+import pandas as pd
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
+
+def backup_sheet_to_drive():
+    try:
+        # Read from Google Sheets
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = service_account.Credentials.from_service_account_file("credentials.json", scopes=scope)
+        
+        gc = gspread.authorize(creds)
+        sheet = gc.open("solace_memory_log").sheet1
+        data = sheet.get_all_values()
+
+        # Save as CSV locally
+        df = pd.DataFrame(data[1:], columns=data[0])  # First row as headers
+        df.to_csv("solace_backup.csv", index=False)
+
+        # Upload to Drive
+        service = build("drive", "v3", credentials=creds)
+        file_metadata = {
+            "name": "solace_backup.csv",
+            "parents": ["1tw3vTFE4g1oefRSPPta459IxTxZTKbW5"]
+        }
+        media = MediaFileUpload("solace_backup.csv", mimetype="text/csv")
+        
+        # Check if file already exists
+        query = f"name='solace_backup.csv' and '{file_metadata['parents'][0]}' in parents"
+        results = service.files().list(q=query, fields="files(id)").execute()
+        files = results.get("files", [])
+        if files:
+            # Update existing file
+            file_id = files[0]["id"]
+            service.files().update(fileId=file_id, media_body=media).execute()
+        else:
+            # Upload new file
+            service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+
+        print("✅ Backup successful and uploaded to Drive.")
+    except Exception as e:
+        print("❌ Backup failed:", e)
