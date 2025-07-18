@@ -173,6 +173,17 @@ def export_messages():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/backup-now", methods=["POST"])
+def backup_now():
+    try:
+        from bot_backup import backup_sheet_to_drive
+        backup_sheet_to_drive()
+        return jsonify({"status": "✅ Backup complete"}), 200
+    except Exception as e:
+        print("❌ Backup Error:", e)
+        return jsonify({"status": "❌ Backup failed", "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
