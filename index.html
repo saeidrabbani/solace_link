@@ -101,6 +101,19 @@
   <button class="delete-btn" onclick="sendSelectedToTelegram()">📤 Send Selected to Telegram</button>
 
   <script>
+
+    <script>
+  function triggerBackup() {
+    fetch("https://solacebot.onrender.com/backup-now", {
+      method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => alert(data.status))
+    .catch(err => alert("❌ Error: " + err));
+  }
+</script>
+
+    
     async function sendMessage() {
       const input = document.getElementById("messageInput").value;
       const response = await fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(input)}`);
