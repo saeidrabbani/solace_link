@@ -1,17 +1,18 @@
 from flask import Flask, jsonify
 import gspread
 import csv
+import os
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-import os
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
 
 app = Flask(__name__)
 
 def backup_sheet_to_drive():
     try:
-        # Load from Google Sheets
+        # Load Google Sheet
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
         client = gspread.authorize(creds)
@@ -24,40 +25,36 @@ def backup_sheet_to_drive():
             writer = csv.writer(f)
             writer.writerows(data)
 
-        # Upload to Google Drive
-        gauth = GoogleAuth()
-        gauth.LoadCredentialsFile("credentials.json")
-        if gauth.credentials is None:
-            gauth.LocalWebserverAuth()
-        elif gauth.access_token_expired:
-            gauth.Refresh()
-        else:
-            gauth.Authorize()
-        gauth.SaveCredentialsFile("credentials.json")
-
-        drive = GoogleDrive(gauth)
-
-        # Remove old version if exists
+        # Upload to Google Drive using googleapiclient
         folder_id = "1tw3vTFE4g1oefRSPPta459IxTxZTKbW5"
-        file_list = drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
-        for file in file_list:
-            if file['title'] == filename:
-                file.Delete()
+        creds_drive = service_account.Credentials.from_service_account_file(
+            "credentials.json",
+            scopes=["https://www.googleapis.com/auth/drive"]
+        )
+        service = build("drive", "v3", credentials=creds_drive)
 
-        # Upload new
-        file_drive = drive.CreateFile({'title': filename, 'parents': [{"id": folder_id}]})
-        file_drive.SetContentFile(filename)
-        file_drive.Upload()
+        # Delete old file if exists
+        results = service.files().list(q=f"'{folder_id}' in parents and name='{filename}' and trashed=false").execute()
+        for file in results.get("files", []):
+            service.files().delete(fileId=file["id"]).execute()
+
+        # Upload new file
+        file_metadata = {
+            "name": filename,
+            "parents": [folder_id]
+        }
+        media = MediaFileUpload(filename, mimetype="text/csv")
+        service.files().create(body=file_metadata, media_body=media, fields="id").execute()
 
         return True, "✅ Backup uploaded to Google Drive."
+
     except Exception as e:
         return False, f"❌ Backup failed: {str(e)}"
 
 @app.route("/backup-now", methods=["POST"])
 def trigger_backup():
     success, message = backup_sheet_to_drive()
-    status = {"status": message}
-    return jsonify(status), 200 if success else 500
+    return jsonify({"status": message}), 200 if success else 500
 
 if __name__ == "__main__":
     app.run(debug=True)
