@@ -74,8 +74,15 @@ def backup_now():
 
         return jsonify({"status": "Backup complete"})
     
-   except Exception as e:
+  except Exception as e:
     import traceback
-    print("❌ Backup failed:\n", traceback.format_exc())
-    return jsonify({"error": str(e)}), 500
+    error_message = traceback.format_exc()
+    print("❌ Backup failed:\n", error_message)
+
+    # Save error to a log file
+    with open("error_log.txt", "w") as f:
+        f.write(error_message)
+
+    return jsonify({"error": "Backup failed. Check error_log.txt"}), 500
+
 
