@@ -11,7 +11,6 @@ from google.oauth2 import service_account
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-
 app = Flask(__name__)
 
 @app.route("/backup-now", methods=["POST"])
@@ -74,6 +73,7 @@ def backup_now():
         print(f"🚀 Uploaded new file to Drive with ID: {uploaded.get('id')}")
 
         return jsonify({"status": "Backup complete"})
+    
     except Exception as e:
-        print(f"❌ Backup failed: {e}")
+        logging.exception("❌ Backup failed due to an unexpected error:")
         return jsonify({"error": str(e)}), 500
