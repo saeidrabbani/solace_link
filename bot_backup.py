@@ -13,6 +13,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
+# Create and configure upload folder
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 @app.route("/backup-now", methods=["POST"])
 def backup_now():
     try:
@@ -73,16 +78,26 @@ def backup_now():
         print(f"🚀 Uploaded new file to Drive with ID: {uploaded.get('id')}")
 
         return jsonify({"status": "Backup complete"})
-    
-  except Exception as e:
-    import traceback
-    error_message = traceback.format_exc()
-    print("❌ Backup failed:\n", error_message)
 
-    # Save error to a log file
-    with open("error_log.txt", "w") as f:
-        f.write(error_message)
+    except Exception as e:
+        import traceback
+        error_message = traceback.format_exc()
+        print("❌ Backup failed:\n", error_message)
 
-    return jsonify({"error": "Backup failed. Check error_log.txt"}), 500
+        # Save error to log file in uploads folder
+        error_path = os.path.join(app.config["UPLOAD_FOLDER"], "error_log.txt")
+        with open(error_path, "w") as f:
+            f.write(error_message)
 
+        return jsonify({"error": "Backup failed. Check error_log.txt"}), 500
 
+# Optional: Allow listing files for downloading (like error_log.txt)
+@app.route("/list-files")
+def list_files():
+    files = os.listdir(app.config["UPLOAD_FOLDER"])
+    return jsonify(files)
+
+@app.route("/uploads/<filename>")
+def download_file(filename):
+    from flask import send_from_directory
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
