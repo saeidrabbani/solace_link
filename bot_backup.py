@@ -8,6 +8,10 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2 import service_account
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
 app = Flask(__name__)
 
 @app.route("/backup-now", methods=["POST"])
