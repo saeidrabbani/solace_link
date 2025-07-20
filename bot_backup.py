@@ -7,6 +7,15 @@ from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from flask import send_file
+
+@app.route("/download-csv", methods=["GET"])
+def download_csv():
+    try:
+        return send_file(CSV_FILENAME, as_attachment=True)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 app = Flask(__name__)
 
