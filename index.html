@@ -81,7 +81,11 @@
   <div class="top-right">
     <button onclick="exportMessages()">🧠 Export All Messages</button>
   </div>
-<button onclick="triggerBackup()" style="position: absolute; top: 10px; left: 10px;">📥 Backup Now</button>
+
+  <button onclick="triggerBackup()" style="position: absolute; top: 10px; left: 10px;">📥 Backup Now</button>
+  <button onclick="window.location.href='https://solacebot.onrender.com/download-csv'" style="position: absolute; top: 60px; left: 10px;">
+    ⬇️ Download Backup (CSV)
+  </button>
 
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Genome_icon.png/600px-Genome_icon.png" width="60" />
   <h1>Welcome to the Solace Portal</h1>
@@ -101,19 +105,15 @@
   <button class="delete-btn" onclick="sendSelectedToTelegram()">📤 Send Selected to Telegram</button>
 
   <script>
+    function triggerBackup() {
+      fetch("https://solacebot.onrender.com/backup-now", {
+        method: "POST"
+      })
+      .then(res => res.json())
+      .then(data => alert(data.status))
+      .catch(err => alert("❌ Error: " + err));
+    }
 
-    
-  function triggerBackup() {
-    fetch("https://solacebot.onrender.com/backup-now", {
-      method: "POST"
-    })
-    .then(res => res.json())
-    .then(data => alert(data.status))
-    .catch(err => alert("❌ Error: " + err));
-  }
-
-
-    
     async function sendMessage() {
       const input = document.getElementById("messageInput").value;
       const response = await fetch(`/.netlify/functions/sendmessage?message=${encodeURIComponent(input)}`);
@@ -121,16 +121,15 @@
       console.log("Sent:", result);
     }
 
-async function fetchLatest() {
-  try {
-    const res = await fetch("https://solacebot.onrender.com/latest-message");
-    const data = await res.json();
-    document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
-  } catch {
-    document.getElementById("latest").innerText = "⚠️ Error loading message";
-  }
-}
-
+    async function fetchLatest() {
+      try {
+        const res = await fetch("https://solacebot.onrender.com/latest-message");
+        const data = await res.json();
+        document.getElementById("latest").innerText = `🧠 Latest: ${data.message}`;
+      } catch {
+        document.getElementById("latest").innerText = "⚠️ Error loading message";
+      }
+    }
 
     async function uploadFile() {
       const input = document.getElementById("fileInput");
