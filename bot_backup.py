@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file
 import gspread
 import csv
 import os
@@ -7,17 +7,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from flask import send_file
 
-@app.route("/download-csv", methods=["GET"])
-def download_csv():
-    try:
-        return send_file(CSV_FILENAME, as_attachment=True)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-app = Flask(__name__)
+app = Flask(__name__)  # ✅ faghat inja
 
 # CONFIG
 SPREADSHEET_ID = "1GFm1IdDYw_jcPw2azflRK0hux0UKWCmqLekQJkezoac"
@@ -26,6 +17,13 @@ DRIVE_FOLDER_ID = "1tw3vTFE4g1oefRSPPta459IxTxZTKbW5"
 CREDENTIALS_PATH = "/etc/secrets/credentials.json"
 CSV_FILENAME = "solace_backup.csv"
 LOG_FILE = "static/uploads/backup_log.txt"
+
+@app.route("/download-csv", methods=["GET"])
+def download_csv():
+    try:
+        return send_file(CSV_FILENAME, as_attachment=True)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def log(msg):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
