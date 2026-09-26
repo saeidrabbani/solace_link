@@ -27,8 +27,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Telegram setup
-TELEGRAM_TOKEN = "7816762363:AAEk86WceNctBS-Kj3deftYqaD0kmb543AA"
-CHAT_ID = "253893212"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.environ.get("OWNER_CHAT_ID")
 TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 TELEGRAM_FILE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument"
 
